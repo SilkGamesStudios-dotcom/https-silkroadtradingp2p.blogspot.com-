@@ -1,7 +1,7 @@
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-sqlalchemy==2.0.36
-itsdangerous==2.2.0
-pydantic==2.10.3 (no 2.9.2).
-psycopg2-binary==2.9.10
-requests==2.32.3
+fastapi>=0.115,<0.116
+uvicorn[standard]>=0.30,<0.33
+sqlalchemy>=2.0,<2.1
+itsdangerous>=2.2,<3
+pydantic>=2.9,<3
+psycopg2-binary>=2.9,<3
+requests>=2.32,<3
