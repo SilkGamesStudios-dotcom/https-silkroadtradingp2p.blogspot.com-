@@ -190,6 +190,22 @@ def root():
     return {"ok": True, "service": "silk-road-trading-api"}
 
 
+@app.get("/api/debug-admin")
+def debug_admin():
+    """
+    ENDPOINT TEMPORAL SOLO PARA DIAGNOSTICAR el problema de login.
+    No muestra la clave real -- solo dice si Render está usando la que
+    vos configuraste o el valor por defecto, y cuántos caracteres tiene.
+    BORRAR este endpoint una vez resuelto el problema (ver instrucciones).
+    """
+    return {
+        "usando_valor_por_defecto": ADMIN_PASSWORD == "cambia-esta-clave",
+        "longitud_clave_configurada": len(ADMIN_PASSWORD),
+        "primer_caracter": ADMIN_PASSWORD[0] if ADMIN_PASSWORD else None,
+        "ultimo_caracter": ADMIN_PASSWORD[-1] if ADMIN_PASSWORD else None,
+    }
+
+
 # ---------- BINANCE P2P PROXY ----------
 BINANCE_P2P_URL = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
 _precio_cache = {"data": None, "ts": 0}
