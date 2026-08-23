@@ -35,7 +35,7 @@ from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import (
-    create_engine, Column, String, Float, Integer, DateTime, ForeignKey
+    create_engine, Column, String, Float, Integer, DateTime, ForeignKey, Boolean
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
@@ -62,6 +62,10 @@ class Empleado(Base):
     nombre = Column(String, nullable=False)
     pin_hash = Column(String, nullable=False)
     comision = Column(Float, default=30.0)
+    cedula = Column(String, nullable=True)
+    binance_pay_id = Column(String, nullable=True)
+    verificado = Column(Boolean, default=False)
+    activo = Column(Boolean, default=True)
 
 
 class Lote(Base):
@@ -113,6 +117,15 @@ class EmpleadoCreateIn(BaseModel):
     nombre: str
     pin: str
     comision: float = 30.0
+
+
+class VerificarEmpleadoIn(BaseModel):
+    cedula: str
+    binance_pay_id: str
+
+
+class EstadoEmpleadoIn(BaseModel):
+    activo: bool
 
 
 class LoteCreateIn(BaseModel):
@@ -168,8 +181,13 @@ def require_admin(authorization: Optional[str] = Header(None)) -> dict:
     return data
 
 
-def require_session(authorization: Optional[str] = Header(None)) -> dict:
-    return read_token(authorization)
+def require_session(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> dict:
+    data = read_token(authorization)
+    if data.get("role") == "empleado":
+        emp = db.query(Empleado).filter(Empleado.id == data.get("id")).first()
+        if not emp or not emp.activo:
+            raise HTTPException(403, "Tu acceso fue bloqueado por el admin. Contactalo para reactivarlo.")
+    return data
 
 
 # ---------- APP ----------
@@ -325,11 +343,14 @@ def login_empleado(body: EmpleadoLoginIn, db: Session = Depends(get_db)):
     emp = db.query(Empleado).filter(Empleado.id == body.id).first()
     if not emp:
         raise HTTPException(401, "Ese ID de empleado no existe.")
+    if not emp.activo:
+        raise HTTPException(403, "Tu acceso fue bloqueado por el admin. Contactalo para reactivarlo.")
     return {
         "token": make_token("empleado", emp.id),
         "id": emp.id,
         "nombre": emp.nombre,
         "comision": emp.comision,
+        "verificado": emp.verificado,
     }
 
 
@@ -337,7 +358,11 @@ def login_empleado(body: EmpleadoLoginIn, db: Session = Depends(get_db)):
 @app.get("/api/empleados")
 def listar_empleados(db: Session = Depends(get_db), _=Depends(require_admin)):
     emps = db.query(Empleado).all()
-    return [{"id": e.id, "nombre": e.nombre, "comision": e.comision} for e in emps]
+    return [{
+        "id": e.id, "nombre": e.nombre, "comision": e.comision,
+        "verificado": e.verificado, "activo": e.activo,
+        "cedula": e.cedula, "binancePayId": e.binance_pay_id,
+    } for e in emps]
 
 
 @app.post("/api/empleados")
@@ -348,6 +373,30 @@ def crear_empleado(body: EmpleadoCreateIn, db: Session = Depends(get_db), _=Depe
     db.add(emp)
     db.commit()
     return {"ok": True}
+
+
+@app.post("/api/empleados/{emp_id}/verificar")
+def verificar_empleado(emp_id: str, body: VerificarEmpleadoIn, db: Session = Depends(get_db), session=Depends(require_session)):
+    if session["role"] == "empleado" and session["id"] != emp_id:
+        raise HTTPException(403, "Solo podés verificar tu propia cuenta.")
+    emp = db.query(Empleado).filter(Empleado.id == emp_id).first()
+    if not emp:
+        raise HTTPException(404, "Empleado no encontrado.")
+    emp.cedula = body.cedula
+    emp.binance_pay_id = body.binance_pay_id
+    emp.verificado = True
+    db.commit()
+    return {"ok": True}
+
+
+@app.patch("/api/empleados/{emp_id}/estado")
+def cambiar_estado_empleado(emp_id: str, body: EstadoEmpleadoIn, db: Session = Depends(get_db), _=Depends(require_admin)):
+    emp = db.query(Empleado).filter(Empleado.id == emp_id).first()
+    if not emp:
+        raise HTTPException(404, "Empleado no encontrado.")
+    emp.activo = body.activo
+    db.commit()
+    return {"ok": True, "activo": emp.activo}
 
 
 @app.delete("/api/empleados/{emp_id}")
