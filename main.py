@@ -190,22 +190,6 @@ def root():
     return {"ok": True, "service": "silk-road-trading-api"}
 
 
-@app.get("/api/debug-admin")
-def debug_admin():
-    """
-    ENDPOINT TEMPORAL SOLO PARA DIAGNOSTICAR el problema de login.
-    No muestra la clave real -- solo dice si Render está usando la que
-    vos configuraste o el valor por defecto, y cuántos caracteres tiene.
-    BORRAR este endpoint una vez resuelto el problema (ver instrucciones).
-    """
-    return {
-        "usando_valor_por_defecto": ADMIN_PASSWORD == "cambia-esta-clave",
-        "longitud_clave_configurada": len(ADMIN_PASSWORD),
-        "primer_caracter": ADMIN_PASSWORD[0] if ADMIN_PASSWORD else None,
-        "ultimo_caracter": ADMIN_PASSWORD[-1] if ADMIN_PASSWORD else None,
-    }
-
-
 # ---------- BINANCE P2P PROXY ----------
 BINANCE_P2P_URL = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
 _precio_cache = {"data": None, "ts": 0}
@@ -293,18 +277,19 @@ def precio_p2p_historial(db: Session = Depends(get_db), _=Depends(require_admin)
 
 
 # ---------- AUTH ----------
+# TEMPORAL: la verificación de clave/PIN está desactivada para poder probar
+# el resto del panel sin trabarse. Cuando todo lo demás funcione bien,
+# volvemos a activar esto (avisale a Claude "reactivá el login").
 @app.post("/api/auth/admin")
 def login_admin(body: AdminLoginIn):
-    if not secrets.compare_digest(body.password, ADMIN_PASSWORD):
-        raise HTTPException(401, "Clave incorrecta.")
     return {"token": make_token("admin")}
 
 
 @app.post("/api/auth/empleado")
 def login_empleado(body: EmpleadoLoginIn, db: Session = Depends(get_db)):
     emp = db.query(Empleado).filter(Empleado.id == body.id).first()
-    if not emp or not verify_pin(body.pin, emp.pin_hash):
-        raise HTTPException(401, "ID o PIN incorrecto.")
+    if not emp:
+        raise HTTPException(401, "Ese ID de empleado no existe.")
     return {
         "token": make_token("empleado", emp.id),
         "id": emp.id,
