@@ -33,6 +33,7 @@ from typing import Optional, List
 import requests
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import (
     create_engine, Column, String, Float, Integer, DateTime, ForeignKey, Boolean
@@ -203,9 +204,14 @@ app.add_middleware(
 )
 
 
+@app.get("/api/status")
+def status():
+    return {"ok": True, "service": "silk-road-trading-api"}
+
+
 @app.get("/")
 def root():
-    return {"ok": True, "service": "silk-road-trading-api"}
+    return FileResponse("index.html")
 
 
 # ---------- BINANCE P2P PROXY ----------
