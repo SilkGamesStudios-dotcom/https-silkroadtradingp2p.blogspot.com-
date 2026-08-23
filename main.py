@@ -276,6 +276,41 @@ def precio_p2p_historial(db: Session = Depends(get_db), _=Depends(require_admin)
     } for s in snaps]
 
 
+@app.get("/api/precio-p2p/tendencia")
+def precio_p2p_tendencia(db: Session = Depends(get_db), _=Depends(require_session)):
+    """
+    Versión liviana del historial, accesible también a empleados (no solo admin).
+    Devuelve los últimos 20 snapshots (para un mini-gráfico de tendencia) más
+    una sugerencia en texto plano comparando el spread actual contra el
+    promedio reciente.
+    """
+    snaps = db.query(PrecioSnapshot).order_by(PrecioSnapshot.timestamp.desc()).limit(20).all()
+    snaps = list(reversed(snaps))  # orden cronológico para el gráfico
+    puntos = [{
+        "timestamp": s.timestamp.isoformat(),
+        "compraMejor": s.compra_mejor,
+        "ventaMejor": s.venta_mejor,
+    } for s in snaps]
+
+    sugerencia = None
+    if len(snaps) >= 3:
+        spreads = []
+        for s in snaps:
+            if s.compra_mejor and s.venta_mejor:
+                spreads.append((s.venta_mejor - s.compra_mejor) / s.compra_mejor * 100)
+        if spreads:
+            actual = spreads[-1]
+            promedio = sum(spreads) / len(spreads)
+            if actual > promedio * 1.15:
+                sugerencia = {"tipo": "favorable", "texto": "El spread está más ancho que lo habitual — buen momento para operar."}
+            elif actual < promedio * 0.85:
+                sugerencia = {"tipo": "desfavorable", "texto": "El spread está más angosto que lo habitual — podría convenir esperar."}
+            else:
+                sugerencia = {"tipo": "normal", "texto": "El spread está dentro de lo normal."}
+
+    return {"puntos": puntos, "sugerencia": sugerencia}
+
+
 # ---------- AUTH ----------
 # TEMPORAL: la verificación de clave/PIN está desactivada para poder probar
 # el resto del panel sin trabarse. Cuando todo lo demás funcione bien,
