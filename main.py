@@ -204,6 +204,10 @@ app.add_middleware(
 )
 
 
+import pathlib
+INDEX_HTML_PATH = pathlib.Path(__file__).resolve().parent / "index.html"
+
+
 @app.get("/api/status")
 def status():
     return {"ok": True, "service": "silk-road-trading-api"}
@@ -211,7 +215,9 @@ def status():
 
 @app.get("/")
 def root():
-    return FileResponse("index.html")
+    if not INDEX_HTML_PATH.exists():
+        raise HTTPException(500, "index.html no está en el repo junto a main.py. Subilo a la raíz del repositorio.")
+    return FileResponse(str(INDEX_HTML_PATH))
 
 
 # ---------- BINANCE P2P PROXY ----------
