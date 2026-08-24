@@ -213,6 +213,21 @@ def status():
     return {"ok": True, "service": "silk-road-trading-api"}
 
 
+@app.get("/api/debug-files")
+def debug_files():
+    """ENDPOINT TEMPORAL para diagnosticar por qué no aparece index.html. Borrar después."""
+    directorio = INDEX_HTML_PATH.parent
+    try:
+        archivos = sorted(os.listdir(directorio))
+    except Exception as e:
+        archivos = [f"ERROR al listar: {e}"]
+    return {
+        "directorio_buscado": str(directorio),
+        "archivos_encontrados": archivos,
+        "__file___real": str(pathlib.Path(__file__).resolve()),
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def root():
     if not INDEX_HTML_PATH.exists():
