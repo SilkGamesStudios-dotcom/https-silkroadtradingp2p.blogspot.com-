@@ -1,1396 +1,506 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Silk Road Trading — P2P USDT/DOP</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-#srt-app{
-  /* Tinta profunda + oro antiguo — escritorio de trading privado */
-  --bg1:#0a0b0d; --bg2:#111318; --card:#14161c; --card2:#191c23;
-  --accent:#c9a15a; --accent2:#3f8f7e; --text:#ece7dc; --sub:#8b8578;
-  --green:#5cb787; --red:#c2645c; --gold:#c9a15a;
-  --border: rgba(201,161,90,0.16);
-  --font-display:'Fraunces',Georgia,serif;
-  --font-body:'Inter',system-ui,-apple-system,sans-serif;
-  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+"""
+Silk Road Trading - Backend
+----------------------------
+API para el panel P2P USDT/DOP. Reemplaza window.storage (que solo funciona
+dentro de Claude.ai) por una base de datos real, para que el frontend
+funcione desde Blogger, el celular, o donde sea.
 
-  all:initial;
-  display:block;
-  box-sizing:border-box;
-  font-family:var(--font-body);
-  background:
-    repeating-linear-gradient(115deg, rgba(201,161,90,0.025) 0px, rgba(201,161,90,0.025) 1px, transparent 1px, transparent 34px),
-    radial-gradient(circle at 15% -10%, #1c1810 0%, transparent 45%),
-    var(--bg1);
-  color:var(--text);width:100%;padding:20px;line-height:1.5;
-  -webkit-font-smoothing:antialiased;
-}
-#srt-app *, #srt-app *::before, #srt-app *::after{box-sizing:border-box;}
-#srt-app{scroll-behavior:smooth;}
-#srt-app .wrap{max-width:1000px;margin:0 auto;width:100%;}
-#srt-app h1{all:unset;font-family:var(--font-display);font-weight:600;font-size:1.65rem;margin:2px 0 2px;
-  display:flex;align-items:center;gap:10px;letter-spacing:.2px;color:var(--text);}
-#srt-app h1 span.tag{font-family:var(--font-mono);font-size:.62rem;color:var(--accent);
-  border:1px solid var(--border);padding:3px 9px;border-radius:3px;font-weight:500;
-  letter-spacing:1px;text-transform:uppercase;}
-#srt-app .sub{color:var(--sub);font-size:.78rem;margin-bottom:20px;font-family:var(--font-mono);
-  letter-spacing:.5px;text-transform:uppercase;position:relative;padding-left:14px;}
-#srt-app .sub::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
-  width:8px;height:1px;background:var(--accent);}
-#srt-app .card{background:var(--card);border:1px solid var(--border);position:relative;
-  border-radius:4px;padding:18px 20px;margin-bottom:16px;
-  box-shadow:0 12px 28px rgba(0,0,0,.35);}
-#srt-app .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,var(--accent) 15%,var(--accent) 85%,transparent);
-  opacity:.55;}
-#srt-app .card h2{all:unset;font-family:var(--font-display);font-weight:600;font-size:1.02rem;margin:0 0 14px;
-  display:flex;align-items:center;gap:6px;letter-spacing:.2px;color:var(--text);}
-#srt-app h2{all:unset;font-family:var(--font-display);font-weight:600;font-size:1.02rem;margin:0 0 14px;
-  display:flex;align-items:center;gap:6px;letter-spacing:.2px;color:var(--text);}
-#srt-app .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;}
-#srt-app label{all:unset;display:block;font-family:var(--font-mono);font-size:.64rem;color:var(--sub);margin-bottom:5px;
-  text-transform:uppercase;letter-spacing:.8px;}
-#srt-app input,#srt-app select{all:unset;box-sizing:border-box;width:100%;padding:9px 11px;border-radius:3px;border:1px solid var(--border);
-  background:#0d0e12;color:var(--text);font-size:.85rem;font-family:var(--font-body);
-  transition:border-color .15s;display:block;}
-#srt-app input:focus,#srt-app select:focus{outline:none;border-color:var(--accent);}
-#srt-app input::placeholder{color:#5a564c;}
-#srt-app button{all:unset;box-sizing:border-box;background:var(--accent);color:#14120a;font-family:var(--font-body);
-  border-radius:3px;padding:10px 20px;font-weight:600;cursor:pointer;font-size:.83rem;
-  margin-top:12px;letter-spacing:.2px;transition:filter .15s, transform .1s;display:inline-block;text-align:center;}
-#srt-app button:hover{filter:brightness(1.08);}
-#srt-app button:active{transform:translateY(1px);}
-#srt-app button.secondary{background:transparent;color:var(--text);border:1px solid var(--border);}
-#srt-app button.danger{background:transparent;color:var(--red);border:1px solid rgba(194,100,92,.4);}
-#srt-app button:disabled{opacity:.35;cursor:not-allowed;}
-#srt-app table{all:unset;display:table;width:100%;border-collapse:collapse;font-size:.8rem;font-family:var(--font-mono);}
-#srt-app tr{display:table-row;}
-#srt-app th{all:unset;display:table-cell;text-align:left;color:var(--sub);font-weight:500;padding:8px 8px;border-bottom:1px solid var(--border);
-  font-size:.64rem;text-transform:uppercase;letter-spacing:.8px;font-family:var(--font-mono);}
-#srt-app td{all:unset;display:table-cell;padding:8px 8px;border-bottom:1px solid rgba(201,161,90,.06);font-family:var(--font-mono);font-size:.78rem;color:var(--text);}
-#srt-app tr:hover{background:rgba(201,161,90,.03);}
-#srt-app .badge{padding:3px 9px;border-radius:3px;font-size:.66rem;font-weight:600;font-family:var(--font-mono);
-  letter-spacing:.4px;text-transform:uppercase;}
-#srt-app .tabs{display:flex;gap:2px;margin-bottom:16px;flex-wrap:wrap;border:1px solid var(--border);
-  border-radius:4px;padding:3px;width:fit-content;background:#0d0e12;}
-#srt-app .tab{all:unset;box-sizing:border-box;padding:8px 16px;border-radius:3px;font-size:.78rem;cursor:pointer;background:transparent;
-  color:var(--sub);font-family:var(--font-body);font-weight:500;transition:all .15s;display:inline-block;}
-#srt-app .tab.active{background:var(--accent);color:#14120a;font-weight:600;}
-#srt-app .hidden{display:none !important;}
-#srt-app .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
-#srt-app .stat{background:var(--card);border:1px solid var(--border);position:relative;
-  border-radius:4px;padding:14px 16px;box-shadow:0 8px 20px rgba(0,0,0,.3);}
-#srt-app .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,var(--accent) 15%,var(--accent) 85%,transparent);opacity:.55;}
-#srt-app .stat .label{font-family:var(--font-mono);font-size:.62rem;color:var(--sub);text-transform:uppercase;
-  letter-spacing:1px;}
-#srt-app .stat .value{font-family:var(--font-mono);font-size:1.35rem;font-weight:600;margin-top:4px;letter-spacing:.3px;}
-#srt-app .pos{color:var(--green);} #srt-app .neg{color:var(--red);}
-#srt-app .empty{text-align:center;color:var(--sub);padding:34px 10px;font-size:.82rem;font-family:var(--font-mono);}
-#srt-app .delbtn{all:unset;cursor:pointer;color:var(--red);font-size:.7rem;padding:2px 6px;
-  margin:0;font-family:var(--font-mono);}
-#srt-app .note{font-size:.72rem;color:var(--sub);margin-top:9px;line-height:1.5;font-family:var(--font-body);}
-#srt-app .login-box{max-width:400px;margin:70px auto;}
-#srt-app .login-box h1{justify-content:center;}
-#srt-app .login-box .sub{text-align:center;padding-left:0;}
-#srt-app .login-box .sub::before{display:none;}
-#srt-app .login-box .card{padding:26px;}
-#srt-app .pill{display:inline-block;padding:3px 11px;border-radius:3px;font-size:.66rem;font-weight:600;
-  font-family:var(--font-mono);letter-spacing:.5px;text-transform:uppercase;}
-#srt-app .pill.al-dia{background:rgba(92,183,135,.12);color:var(--green);border:1px solid rgba(92,183,135,.3);}
-#srt-app .pill.pendiente{background:rgba(194,100,92,.12);color:var(--red);border:1px solid rgba(194,100,92,.3);}
-#srt-app .lock-msg{background:rgba(194,100,92,.1);color:var(--red);border:1px solid rgba(194,100,92,.3);
-  border-radius:4px;padding:10px 14px;font-size:.8rem;margin-top:10px;}
-#srt-app .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;}
-#srt-app .who{font-size:.7rem;color:var(--sub);font-family:var(--font-mono);letter-spacing:.4px;}
-#srt-app a{color:var(--accent);text-decoration:none;}
-#srt-app .partner-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px;}
-#srt-app .partner-badge{display:flex;align-items:center;gap:7px;border:1px solid var(--border);
-  border-radius:4px;padding:8px 14px;font-family:var(--font-mono);font-size:.68rem;color:var(--sub);
-  background:var(--card);letter-spacing:.4px;text-transform:uppercase;}
-#srt-app .partner-badge svg{display:block;flex-shrink:0;}
-</style>
+Deploy en Render:
+  1. Subí esta carpeta a un repo de GitHub.
+  2. En Render: New -> Web Service -> conectá el repo.
+  3. Build command:  pip install -r requirements.txt
+  4. Start command:  uvicorn main:app --host 0.0.0.0 --port $PORT
+  5. Variables de entorno (Render -> Environment):
+       ADMIN_PASSWORD   -> tu clave de admin (NO la pongas en el código)
+       SECRET_KEY       -> cualquier string largo random, para firmar tokens
+       CORS_ORIGINS     -> https://tublog.blogspot.com,https://otra-url.com
+       DATABASE_URL     -> (opcional) postgresql://... si usás Postgres.
+                            Si no la ponés, usa SQLite local (silkroad.db).
+                            OJO: en Render free tier el disco es efímero,
+                            si el servicio se reinicia se pierde la data en
+                            SQLite. Para producción real, usá Postgres
+                            (Render tiene un plan free de Postgres) igual
+                            que ya hiciste con Silk Miner.
+"""
 
-</head>
-<body>
-<div id="srt-app">
-<div class="wrap">
+import os
+import time
+import hashlib
+import secrets
+from datetime import datetime
+from typing import Optional, List
 
-<div id="loginScreen" class="login-box">
-  <h1>Silk Road Trading <span class="tag">USDT/DOP</span></h1>
-  <div class="sub">Plataforma interna de operaciones P2P</div>
-  <div class="card">
-    <button onclick="entrarDirecto()" style="width:100%;margin-bottom:16px;font-size:.9rem;padding:13px">
-      Entrar directo como Admin
-    </button>
-    <div class="note" style="text-align:center;margin-bottom:14px">— o elegí abajo si sos empleado —</div>
-    <div class="tabs">
-      <div class="tab active" data-login="empleado">Empleado</div>
-      <div class="tab" data-login="admin">Admin</div>
-    </div>
-    <div id="loginEmpleado">
-      <label>ID de empleado</label>
-      <input id="empId" placeholder="ej: E001">
-      <label style="margin-top:8px">PIN</label>
-      <input id="empPin" type="password" placeholder="****">
-      <button onclick="loginEmpleado()">Entrar</button>
-    </div>
-    <div id="loginAdmin" class="hidden">
-      <label>Clave admin</label>
-      <input id="adminPass" type="password" placeholder="Clave (por ahora no se verifica)">
-      <button onclick="loginAdmin()">Entrar</button>
-    </div>
-    <div class="note" id="loginMsg"></div>
-  </div>
-  <div class="partner-row">
-    <a class="partner-badge" href="https://p2p.binance.com/es" target="_blank" rel="noopener">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 4.5L12 7L9.5 4.5L12 2Z" fill="currentColor"/><path d="M12 17L14.5 19.5L12 22L9.5 19.5L12 17Z" fill="currentColor"/><path d="M4.5 9.5L7 12L4.5 14.5L2 12L4.5 9.5Z" fill="currentColor"/><path d="M19.5 9.5L22 12L19.5 14.5L17 12L19.5 9.5Z" fill="currentColor"/><path d="M12 9.5L14.5 12L12 14.5L9.5 12L12 9.5Z" fill="currentColor"/></svg>
-      Binance P2P
-    </a>
-    <div class="partner-badge">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h13M16 8l-3-3M16 8l-3 3"/><path d="M21 16H8M8 16l3-3M8 16l3 3"/></svg>
-      Forex · USDT/DOP
-    </div>
-    <div class="partner-badge">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12c3-6 6-9 9-9s6 3 9 9-6 9-9 9-6-3-9-9Z"/><path d="M7 12h10M12 8v8" stroke-width="1.2"/></svg>
-      Silk Road Trading
-    </div>
-  </div>
-</div>
+import requests
+from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import BaseModel
+from sqlalchemy import (
+    create_engine, Column, String, Float, Integer, DateTime, ForeignKey, Boolean
+)
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
-<div id="appScreen" class="hidden">
-  <div class="topbar">
-    <h1>Silk Road Trading <span class="tag">USDT/DOP</span></h1>
-    <div>
-      <span class="who" id="whoAmI"></span>
-      <button class="secondary" style="margin-top:0" onclick="logout()">Salir</button>
-    </div>
-  </div>
+# ---------- CONFIG ----------
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "cambia-esta-clave")
+SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./silkroad.db")
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*")
+TOKEN_MAX_AGE = 60 * 60 * 12  # 12 horas
 
-  <!-- ADMIN VIEW -->
-  <div id="adminView" class="hidden">
-    <div class="grid" id="adminStats"></div>
-    <div class="tabs">
-      <div class="tab active" data-tab="empleados">Empleados</div>
-      <div class="tab" data-tab="lotes">Lotes</div>
-      <div class="tab" data-tab="riesgo">Capital y Riesgo</div>
-      <div class="tab" data-tab="reportes">Reportes</div>
-    </div>
+serializer = URLSafeTimedSerializer(SECRET_KEY)
 
-    <div id="tab-empleados" class="card">
-      <h2>Crear empleado</h2>
-      <div class="form-grid">
-        <div><label>ID único</label><input id="nEmpId" placeholder="ej: E002"></div>
-        <div><label>Nombre</label><input id="nEmpNombre" placeholder="Nombre"></div>
-        <div><label>PIN</label><input id="nEmpPin" placeholder="1234"></div>
-        <div><label>% Comisión</label><input id="nEmpComision" type="number" value="30"></div>
-      </div>
-      <button onclick="crearEmpleado()">Crear empleado</button>
-      <h2 style="margin-top:20px">Empleados registrados</h2>
-      <div id="empleadosBody"></div>
-      <div id="empleadoDetalleBox" style="margin-top:20px"></div>
-    </div>
+# ---------- DB SETUP ----------
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
-    <div id="tab-lotes" class="card hidden">
-      <h2>Mercado en vivo (USDT/DOP)</h2>
-      <div id="precioP2PBox" class="note">Cargando precio...</div>
-      <div id="tendenciaBoxAdmin" style="margin-top:12px"></div>
-      <button onclick="cargarPrecioP2P()" style="margin-top:8px">Actualizar precio</button>
 
-      <h2 style="margin-top:20px">Margen objetivo</h2>
-      <div class="form-grid" style="max-width:280px">
-        <div><label>Margen mínimo aceptable (%)</label>
-          <input id="margenObjetivo" type="number" step="0.1" value="1.5" oninput="onCambioMargenObjetivo()">
-        </div>
-      </div>
-      <div class="note">Con este % calculamos el precio de venta mínimo que hace que valga la pena vender YA, en vez de sostener el lote esperando un precio mejor. Se recalcula solo cuando cargás el precio de compra.</div>
-      <div id="decisionMargenBox" style="margin-top:10px"></div>
+class Empleado(Base):
+    __tablename__ = "empleados"
+    id = Column(String, primary_key=True)
+    nombre = Column(String, nullable=False)
+    pin_hash = Column(String, nullable=False)
+    comision = Column(Float, default=30.0)
+    cedula = Column(String, nullable=True)
+    binance_pay_id = Column(String, nullable=True)
+    verificado = Column(Boolean, default=False)
+    activo = Column(Boolean, default=True)
 
-      <h2 style="margin-top:20px">Asignar nuevo lote</h2>
-      <div class="form-grid">
-        <div><label>Empleado</label><select id="loteEmp"></select></div>
-        <div><label>Monto USDT</label><input id="loteMonto" type="number" step="0.01" placeholder="ej: 500" oninput="onCambioMargenObjetivo()"></div>
-        <div><label>Precio compra (DOP/USDT)</label><input id="lotePrecio" type="number" step="0.01" placeholder="ej: 59.4" oninput="onCambioMargenObjetivo()"></div>
-        <div><label>Precio venta objetivo (DOP/USDT)</label><input id="lotePrecioVenta" type="number" step="0.01" placeholder="ej: 60.2"></div>
-        <div><label>Fecha/hora entrega</label><input id="loteFecha" type="datetime-local"></div>
-      </div>
-      <button onclick="asignarLote()">Asignar lote</button>
-      <div class="note">El precio de venta que pongas acá es el objetivo al que el empleado debe vender. Él no elige precios, solo ejecuta y confirma.</div>
-      <h2 style="margin-top:20px">Todos los lotes</h2>
-      <div id="lotesBody"></div>
-    </div>
 
-    <div id="tab-riesgo" class="card hidden">
-      <h2>Capital en riesgo ahora mismo</h2>
-      <div class="note">Esto es lo que tenés comprado y todavía NO vendido — plata "parada" expuesta al mercado hasta que se cierre la venta.</div>
-      <div class="grid" id="riesgoStats" style="margin-top:12px"></div>
+class Lote(Base):
+    __tablename__ = "lotes"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    emp_id = Column(String, ForeignKey("empleados.id"), nullable=False)
+    monto_usdt = Column(Float, nullable=False)
+    precio_compra = Column(Float, nullable=False)
+    precio_venta_objetivo = Column(Float, nullable=False)
+    fecha = Column(DateTime, nullable=False)
+    precio_venta = Column(Float, nullable=True)
+    fecha_venta = Column(DateTime, nullable=True)
+    estado = Column(String, default="activo")
 
-      <h2 style="margin-top:20px">Concentración por empleado</h2>
-      <div class="note">Si casi todo el capital en riesgo está en manos de un solo empleado, un problema con esa persona (error, demora, cuenta bloqueada) te afecta el negocio entero.</div>
-      <div id="riesgoConcentracion" style="margin-top:10px"></div>
 
-      <h2 style="margin-top:20px">Lotes actualmente en riesgo</h2>
-      <div id="riesgoLotesBody"></div>
-    </div>
+class PrecioSnapshot(Base):
+    __tablename__ = "precio_snapshots"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    compra_mejor = Column(Float, nullable=True)
+    compra_promedio = Column(Float, nullable=True)
+    venta_mejor = Column(Float, nullable=True)
+    venta_promedio = Column(Float, nullable=True)
 
-    <div id="tab-reportes" class="card hidden">
-      <h2>Histórico real de nuestras operaciones</h2>
-      <div class="note">Esto SÍ es lo que compramos y vendimos nosotros (no el mercado). Sirve como respaldo histórico de cada operación cerrada.</div>
-      <div class="tabs" style="margin-top:10px">
-        <div class="tab active" data-gran="dia" data-target="operaciones">Día</div>
-        <div class="tab" data-gran="semana" data-target="operaciones">Semana</div>
-        <div class="tab" data-gran="mes" data-target="operaciones">Mes</div>
-      </div>
-      <div style="height:260px"><canvas id="graficoOperacionesCanvas"></canvas></div>
-      <div id="graficoOperacionesNota" class="note" style="margin-top:6px"></div>
 
-      <h2 style="margin-top:20px">Margen promedio por día de la semana</h2>
-      <div id="repDia"></div>
-      <h2 style="margin-top:20px">Margen promedio por mes</h2>
-      <div id="repMes"></div>
-      <h2 style="margin-top:20px">Margen promedio por franja horaria (compra)</h2>
-      <div id="repHora"></div>
-      <h2 style="margin-top:20px">Ranking por empleado</h2>
-      <div id="repEmp"></div>
-      <h2 style="margin-top:20px">Evolución del mercado (Binance P2P)</h2>
-      <div class="note">Esto es distinto a lo de arriba: no mide tus operaciones, mide el mercado en sí — se arma solo con cada consulta de precio que hacés. Cuantos más días pasen, más útil se pone.</div>
-      <div class="tabs" style="margin-top:10px">
-        <div class="tab active" data-gran="dia" data-target="mercado">Día</div>
-        <div class="tab" data-gran="semana" data-target="mercado">Semana</div>
-        <div class="tab" data-gran="mes" data-target="mercado">Mes</div>
-      </div>
-      <div style="height:260px"><canvas id="graficoMercadoCanvas"></canvas></div>
-      <div id="graficoMercadoNota" class="note" style="margin-top:6px"></div>
+Base.metadata.create_all(bind=engine)
 
-      <h2 style="margin-top:20px">Mejores horas del mercado (spread compra/venta según Binance)</h2>
-      <div id="repMercadoHora" style="margin-top:8px"></div>
-      <h2 style="margin-top:20px">Mejores días del mercado</h2>
-      <div id="repMercadoDia"></div>
-    </div>
-  </div>
 
-  <!-- EMPLEADO VIEW -->
-  <div id="empleadoView" class="hidden">
-    <div class="grid" id="empStats"></div>
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-    <div class="card" id="verificacionCard"></div>
 
-    <div id="empleadoResto" class="hidden">
-      <div class="card">
-        <h2>Mercado en vivo (USDT/DOP)</h2>
-        <div id="precioP2PBoxEmp" class="note">Cargando precio...</div>
-        <div id="tendenciaBoxEmp" style="margin-top:12px"></div>
-        <div id="comisionEstimadaBox" style="margin-top:12px"></div>
-      </div>
+# ---------- SCHEMAS ----------
+class AdminLoginIn(BaseModel):
+    password: str
 
-      <div class="card">
-        <h2>Tu lote</h2>
-        <div id="loteActivoCard"></div>
-        <div id="reportarCard"></div>
-      </div>
 
-      <div class="card">
-        <h2>Ir a Binance</h2>
-        <div class="note">Para operar tenés que tener tus lotes reportados. Si tenés un lote pendiente de reportar, primero completalo arriba.</div>
-        <button id="btnBinance" onclick="irABinance()">Ir a Binance →</button>
-        <div id="lockMsg"></div>
-      </div>
+class EmpleadoLoginIn(BaseModel):
+    id: str
+    pin: str
 
-      <div class="card">
-        <h2>Tu desempeño</h2>
-        <div id="miDesempeno"></div>
-      </div>
 
-      <h2 style="margin:20px 0 10px">Mi historial</h2>
-      <div class="card" id="miHistorial"></div>
-    </div>
-  </div>
-</div>
+class EmpleadoCreateIn(BaseModel):
+    id: str
+    nombre: str
+    pin: str
+    comision: float = 30.0
 
-</div>
-</div>
 
-<script>
-// ============================================================
-// CONFIGURACIÓN — cambiá esto por la URL de tu backend en Render
-// ejemplo: 'https://silk-road-api.onrender.com'
-// ============================================================
-// Como el panel ahora se sirve directo desde el mismo backend (Render),
-// usamos ruta relativa — no depende de ninguna URL fija ni de Blogger.
-const API_BASE = '';
+class VerificarEmpleadoIn(BaseModel):
+    cedula: str
+    binance_pay_id: str
 
-let DB = { empleados: [], lotes: [] };
-let session = null; // {role:'admin', token} or {role:'empleado', id, nombre, comision, token}
 
-// ---------- API HELPERS ----------
-async function apiCall(path, {method='GET', body=null, auth=true} = {}){
-  const headers = {'Content-Type':'application/json'};
-  if(auth && session && session.token) headers['Authorization'] = 'Bearer ' + session.token;
-  const res = await fetch(API_BASE + path, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined
-  });
-  let data = null;
-  try{ data = await res.json(); }catch(e){}
-  if(!res.ok){
-    const msg = (data && data.detail) ? data.detail : ('Error ' + res.status);
-    throw new Error(msg);
-  }
-  return data;
-}
+class EstadoEmpleadoIn(BaseModel):
+    activo: bool
 
-async function cargarDatos(){
-  if(session.role === 'admin'){
-    const [emps, lotes] = await Promise.all([
-      apiCall('/api/empleados'),
-      apiCall('/api/lotes')
-    ]);
-    DB.empleados = emps.map(e=>({id:e.id, nombre:e.nombre, comision:e.comision, verificado:e.verificado, activo:e.activo, cedula:e.cedula, binancePayId:e.binancePayId}));
-    DB.lotes = lotes.map(mapLoteFromApi);
-  } else {
-    const lotes = await apiCall('/api/lotes');
-    DB.lotes = lotes.map(mapLoteFromApi);
-    DB.empleados = [{id:session.id, nombre:session.nombre, comision:session.comision, verificado:session.verificado}];
-  }
-}
 
-function mapLoteFromApi(l){
-  return {
-    id: l.id,
-    empId: l.empId,
-    montoUSDT: l.montoUSDT,
-    precioCompra: l.precioCompra,
-    precioVentaObjetivo: l.precioVentaObjetivo,
-    fecha: l.fecha,
-    precioVenta: l.precioVenta,
-    fechaVenta: l.fechaVenta,
-    estado: l.estado
-  };
-}
+class LoteCreateIn(BaseModel):
+    emp_id: str
+    monto_usdt: float
+    precio_compra: float
+    precio_venta_objetivo: float
+    fecha: datetime
 
-// ---------- LOGIN ----------
-document.querySelectorAll('#loginScreen .tab').forEach(t=>{
-  t.addEventListener('click', ()=>{
-    document.querySelectorAll('#loginScreen .tab').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');
-    document.getElementById('loginEmpleado').classList.toggle('hidden', t.dataset.login!=='empleado');
-    document.getElementById('loginAdmin').classList.toggle('hidden', t.dataset.login!=='admin');
-  });
-});
 
-async function entrarDirecto(){
-  const msg = document.getElementById('loginMsg');
-  msg.textContent = 'Entrando...';
-  try{
-    const data = await apiCall('/api/auth/admin', {method:'POST', auth:false, body:{password: ''}});
-    session = {role:'admin', token: data.token};
-    await entrarApp();
-  } catch(e){
-    msg.textContent = 'No se pudo conectar al servidor: ' + e.message;
-  }
-}
+class VentaIn(BaseModel):
+    fecha_venta: datetime
+    precio_venta: Optional[float] = None  # si es None, se usa el objetivo
 
-async function loginAdmin(){
-  const pass = document.getElementById('adminPass').value;
-  const msg = document.getElementById('loginMsg');
-  msg.textContent = 'Entrando...';
-  try{
-    const data = await apiCall('/api/auth/admin', {method:'POST', auth:false, body:{password: pass}});
-    session = {role:'admin', token: data.token};
-    await entrarApp();
-  } catch(e){
-    msg.textContent = 'Clave incorrecta.';
-  }
-}
 
-async function loginEmpleado(){
-  const id = document.getElementById('empId').value.trim();
-  const pin = document.getElementById('empPin').value.trim();
-  const msg = document.getElementById('loginMsg');
-  msg.textContent = 'Entrando...';
-  try{
-    const data = await apiCall('/api/auth/empleado', {method:'POST', auth:false, body:{id, pin}});
-    session = {role:'empleado', id:data.id, nombre:data.nombre, comision:data.comision, verificado:data.verificado, token:data.token};
-    await entrarApp();
-  } catch(e){
-    msg.textContent = e.message || 'ID o PIN incorrecto.';
-  }
-}
+# ---------- HELPERS: passwords / tokens ----------
+def hash_pin(pin: str) -> str:
+    salt = secrets.token_hex(8)
+    h = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt.encode(), 100_000).hex()
+    return f"{salt}${h}"
 
-function logout(){
-  session = null;
-  DB = { empleados: [], lotes: [] };
-  document.getElementById('appScreen').classList.add('hidden');
-  document.getElementById('loginScreen').classList.remove('hidden');
-  document.getElementById('adminPass').value='';
-  document.getElementById('empPin').value='';
-  document.getElementById('loginMsg').textContent='';
-}
 
-async function entrarApp(){
-  document.getElementById('loginMsg').textContent = '';
-  try{
-    await cargarDatos();
-  }catch(e){
-    document.getElementById('loginMsg').textContent = 'No se pudo conectar al servidor: ' + e.message;
-    session = null;
-    return;
-  }
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('appScreen').classList.remove('hidden');
-  document.getElementById('adminView').classList.toggle('hidden', session.role!=='admin');
-  document.getElementById('empleadoView').classList.toggle('hidden', session.role!=='empleado');
-  if(session.role==='admin'){
-    document.getElementById('whoAmI').textContent = 'Admin';
-    renderAdmin();
-  } else {
-    document.getElementById('whoAmI').textContent = session.nombre + ' (' + session.id + ')';
-    renderEmpleado();
-  }
-}
+def verify_pin(pin: str, stored: str) -> bool:
+    try:
+        salt, h = stored.split("$")
+    except ValueError:
+        return False
+    check = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt.encode(), 100_000).hex()
+    return secrets.compare_digest(check, h)
 
-// ---------- HELPERS ----------
-function fmtMoney(n){ return (n||0).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
-function calcLote(l){
-  const montoDOPCompra = l.precioCompra * l.montoUSDT;
-  let margenPct=null, gananciaTotal=null, comisionEmp=null, gananciaNegocio=null, horasVenta=null;
-  if(l.precioVenta && l.fechaVenta){
-    const montoDOPVenta = l.precioVenta * l.montoUSDT;
-    gananciaTotal = montoDOPVenta - montoDOPCompra;
-    margenPct = (gananciaTotal / montoDOPCompra) * 100;
-    const emp = DB.empleados.find(e=>e.id===l.empId);
-    const pctComision = emp ? emp.comision : 30;
-    comisionEmp = gananciaTotal * (pctComision/100);
-    gananciaNegocio = gananciaTotal - comisionEmp;
-    horasVenta = (new Date(l.fechaVenta) - new Date(l.fecha)) / 3600000;
-  }
-  return {montoDOPCompra, margenPct, gananciaTotal, comisionEmp, gananciaNegocio, horasVenta};
-}
+def make_token(role: str, emp_id: Optional[str] = None) -> str:
+    return serializer.dumps({"role": role, "id": emp_id})
 
-// ---------- ADMIN: EXPEDIENTE COMPLETO POR EMPLEADO ----------
-let empleadoDetalleSeleccionado = null;
 
-function verDetalleEmpleado(empId, silencioso){
-  empleadoDetalleSeleccionado = empId;
-  const emp = DB.empleados.find(e=>e.id===empId);
-  const box = document.getElementById('empleadoDetalleBox');
-  if(!emp){ box.innerHTML=''; return; }
+def read_token(authorization: Optional[str]) -> dict:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Falta token de autenticación.")
+    token = authorization.split(" ", 1)[1]
+    try:
+        data = serializer.loads(token, max_age=TOKEN_MAX_AGE)
+    except SignatureExpired:
+        raise HTTPException(401, "Sesión expirada, iniciá sesión de nuevo.")
+    except BadSignature:
+        raise HTTPException(401, "Token inválido.")
+    return data
 
-  const misLotesTodos = DB.lotes.filter(l=>l.empId===empId).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
-  const cerrados = misLotesTodos.filter(l=>l.precioVenta);
-  const activos = misLotesTodos.filter(l=>!l.precioVenta);
 
-  const volumenTotalUSDT = misLotesTodos.reduce((s,l)=>s+l.montoUSDT,0);
-  const gananciaNegocioTotal = cerrados.reduce((s,l)=>s+calcLote(l).gananciaNegocio,0);
-  const comisionTotal = cerrados.reduce((s,l)=>s+calcLote(l).comisionEmp,0);
-  const margenes = cerrados.map(l=>calcLote(l).margenPct).filter(v=>v!=null);
-  const margenProm = margenes.length ? margenes.reduce((a,b)=>a+b,0)/margenes.length : null;
-  const horas = cerrados.map(l=>calcLote(l).horasVenta).filter(v=>v!=null);
-  const horasProm = horas.length ? horas.reduce((a,b)=>a+b,0)/horas.length : null;
+def require_admin(authorization: Optional[str] = Header(None)) -> dict:
+    data = read_token(authorization)
+    if data.get("role") != "admin":
+        raise HTTPException(403, "Requiere permisos de admin.")
+    return data
 
-  const filas = misLotesTodos.map(l=>{
-    const c = calcLote(l);
-    return `<tr>
-      <td>${new Date(l.fecha).toLocaleString('es-DO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
-      <td>${l.montoUSDT}</td>
-      <td>${l.precioCompra}</td>
-      <td>${l.precioVentaObjetivo}</td>
-      <td>${l.precioVenta ?? '—'}</td>
-      <td>${l.precioVenta ? (l.fechaVenta ? new Date(l.fechaVenta).toLocaleString('es-DO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—') : '<span class="pill pendiente">Activo</span>'}</td>
-      <td>${c.margenPct!=null ? `<span class="${c.margenPct>=0?'pos':'neg'}">${c.margenPct.toFixed(2)}%</span>` : '—'}</td>
-      <td>${c.comisionEmp!=null ? fmtMoney(c.comisionEmp)+' DOP' : '—'}</td>
-    </tr>`;
-  }).join('');
 
-  box.innerHTML = `
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <h2 style="margin:0">Expediente — ${emp.nombre} (${emp.id})</h2>
-        <button class="secondary" onclick="cerrarDetalleEmpleado()" style="margin:0">Cerrar</button>
-      </div>
-      <div class="grid" style="margin-top:14px">
-        <div class="stat"><div class="label">Volumen total movido</div><div class="value">${fmtMoney(volumenTotalUSDT)} USDT</div></div>
-        <div class="stat"><div class="label">Lotes (activos / cerrados)</div><div class="value">${activos.length} / ${cerrados.length}</div></div>
-        <div class="stat"><div class="label">Margen promedio</div><div class="value ${margenProm>=0?'pos':'neg'}">${margenProm!=null ? margenProm.toFixed(2)+'%' : '—'}</div></div>
-        <div class="stat"><div class="label">Tiempo promedio de venta</div><div class="value">${horasProm!=null ? horasProm.toFixed(1)+'h' : '—'}</div></div>
-        <div class="stat"><div class="label">Ganancia generada al negocio</div><div class="value pos">${fmtMoney(gananciaNegocioTotal)} DOP</div></div>
-        <div class="stat"><div class="label">Comisión total pagada</div><div class="value pos">${fmtMoney(comisionTotal)} DOP</div></div>
-      </div>
-      <h2 style="margin-top:18px">Historial completo (${misLotesTodos.length} lotes)</h2>
-      ${misLotesTodos.length===0 ? '<div class="empty">Todavía no tiene lotes asignados.</div>' : `
-      <table>
-        <tr><th>Entrega</th><th>USDT</th><th>P.compra</th><th>P.objetivo</th><th>P.venta real</th><th>Venta</th><th>Margen</th><th>Comisión</th></tr>
-        ${filas}
-      </table>`}
-    </div>
-  `;
-  if(!silencioso) box.scrollIntoView({behavior:'smooth', block:'nearest'});
-}
+def require_session(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> dict:
+    data = read_token(authorization)
+    if data.get("role") == "empleado":
+        emp = db.query(Empleado).filter(Empleado.id == data.get("id")).first()
+        if not emp or not emp.activo:
+            raise HTTPException(403, "Tu acceso fue bloqueado por el admin. Contactalo para reactivarlo.")
+    return data
 
-function cerrarDetalleEmpleado(){
-  empleadoDetalleSeleccionado = null;
-  document.getElementById('empleadoDetalleBox').innerHTML = '';
-}
 
-// ---------- ADMIN: EMPLEADOS ----------
-async function crearEmpleado(){
-  const id = document.getElementById('nEmpId').value.trim();
-  const nombre = document.getElementById('nEmpNombre').value.trim();
-  const pin = document.getElementById('nEmpPin').value.trim();
-  const comision = parseFloat(document.getElementById('nEmpComision').value) || 30;
-  if(!id || !nombre || !pin){ alert('Completá ID, nombre y PIN.'); return; }
-  try{
-    await apiCall('/api/empleados', {method:'POST', body:{id, nombre, pin, comision}});
-    await cargarDatos();
-    ['nEmpId','nEmpNombre','nEmpPin'].forEach(x=>document.getElementById(x).value='');
-    renderAdmin();
-  }catch(e){ alert('Error: ' + e.message); }
-}
+# ---------- APP ----------
+app = FastAPI(title="Silk Road Trading API")
 
-async function borrarEmpleado(id){
-  if(!confirm('¿Borrar empleado ' + id + '? Sus lotes quedan pero sin dueño.')) return;
-  try{
-    await apiCall('/api/empleados/' + encodeURIComponent(id), {method:'DELETE'});
-    await cargarDatos();
-    renderAdmin();
-  }catch(e){ alert('Error: ' + e.message); }
-}
+origins = [o.strip() for o in CORS_ORIGINS.split(",")] if CORS_ORIGINS != "*" else ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-async function toggleAccesoEmpleado(id, activarlo){
-  try{
-    await apiCall(`/api/empleados/${encodeURIComponent(id)}/estado`, {method:'PATCH', body:{activo: activarlo}});
-    await cargarDatos();
-    renderAdmin();
-  }catch(e){ alert('Error: ' + e.message); }
-}
 
-// ---------- ADMIN: LOTES ----------
-async function asignarLote(){
-  const empId = document.getElementById('loteEmp').value;
-  const monto = parseFloat(document.getElementById('loteMonto').value);
-  const precio = parseFloat(document.getElementById('lotePrecio').value);
-  const precioVentaObj = parseFloat(document.getElementById('lotePrecioVenta').value);
-  const fecha = document.getElementById('loteFecha').value;
-  if(!empId || !monto || !precio || !precioVentaObj || !fecha){ alert('Completá todos los campos del lote.'); return; }
-  try{
-    await apiCall('/api/lotes', {method:'POST', body:{
-      emp_id: empId, monto_usdt: monto, precio_compra: precio,
-      precio_venta_objetivo: precioVentaObj, fecha
-    }});
-    await cargarDatos();
-    ['loteMonto','lotePrecio','lotePrecioVenta'].forEach(x=>document.getElementById(x).value='');
-    autocompletarFechaLote();
-    renderAdmin();
-  }catch(e){ alert('Error: ' + e.message); }
-}
+import pathlib
+INDEX_HTML_PATH = pathlib.Path(__file__).resolve().parent / "index.html"
 
-function autocompletarFechaLote(){
-  const input = document.getElementById('loteFecha');
-  if(!input) return;
-  const ahora = new Date();
-  ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
-  input.value = ahora.toISOString().slice(0,16);
-}
 
-async function borrarLote(id){
-  if(!confirm('¿Borrar este lote?')) return;
-  try{
-    await apiCall('/api/lotes/' + id, {method:'DELETE'});
-    await cargarDatos();
-    renderAdmin();
-  }catch(e){ alert('Error: ' + e.message); }
-}
+@app.get("/api/status")
+def status():
+    return {"ok": True, "service": "silk-road-trading-api"}
 
-// ---------- ADMIN RENDER ----------
-function renderAdmin(){
-  const sel = document.getElementById('loteEmp');
-  sel.innerHTML = DB.empleados.map(e=>`<option value="${e.id}">${e.nombre} (${e.id})</option>`).join('') || '<option value="">— sin empleados —</option>';
 
-  // stats
-  const cerrados = DB.lotes.filter(l=>l.precioVenta);
-  const gananciaTotalNeg = cerrados.reduce((s,l)=>s+calcLote(l).gananciaNegocio,0);
-  const comisionesTotal = cerrados.reduce((s,l)=>s+calcLote(l).comisionEmp,0);
-  const activos = DB.lotes.filter(l=>!l.precioVenta).length;
-  document.getElementById('adminStats').innerHTML = `
-    <div class="stat"><div class="label">Empleados</div><div class="value">${DB.empleados.length}</div></div>
-    <div class="stat"><div class="label">Lotes activos</div><div class="value">${activos}</div></div>
-    <div class="stat"><div class="label">Ganancia negocio</div><div class="value ${gananciaTotalNeg>=0?'pos':'neg'}">${fmtMoney(gananciaTotalNeg)} DOP</div></div>
-    <div class="stat"><div class="label">Comisiones pagadas</div><div class="value">${fmtMoney(comisionesTotal)} DOP</div></div>
-  `;
-
-  // empleados table
-  const empBody = document.getElementById('empleadosBody');
-  if(DB.empleados.length===0){
-    empBody.innerHTML = '<div class="empty">Todavía no creaste empleados.</div>';
-  } else {
-    empBody.innerHTML = `<table><tr><th>ID</th><th>Nombre</th><th>Comisión</th><th>Verificación</th><th>Acceso</th><th>Lotes activos</th><th></th></tr>
-      ${DB.empleados.map(e=>{
-        const misLotesActivos = DB.lotes.filter(l=>l.empId===e.id && !l.precioVenta).length;
-        return `<tr style="cursor:pointer" onclick="verDetalleEmpleado('${e.id}')">
-          <td>${e.id}</td><td>${e.nombre}</td><td>${e.comision}%</td>
-          <td>${e.verificado ? '<span class="pill al-dia">Verificado</span>' : '<span class="pill pendiente">Sin verificar</span>'}</td>
-          <td>${e.activo!==false ? '<span class="pill al-dia">Activo</span>' : '<span class="pill pendiente">Bloqueado</span>'}</td>
-          <td>${misLotesActivos}</td>
-          <td style="white-space:nowrap">
-            <button class="secondary" style="margin:0;padding:5px 10px;font-size:.7rem" onclick="event.stopPropagation();toggleAccesoEmpleado('${e.id}', ${e.activo===false})">${e.activo===false ? 'Desbloquear' : 'Bloquear'}</button>
-            <button class="delbtn" onclick="event.stopPropagation();borrarEmpleado('${e.id}')">✕</button>
-          </td>
-        </tr>`;
-      }).join('')}
-    </table>
-    <div class="note" style="margin-top:8px">Click en un empleado para ver su expediente completo. "Bloquear" corta su acceso al instante, incluso si ya tiene la sesión abierta — útil al cerrar la jornada.</div>`;
-  }
-  if(empleadoDetalleSeleccionado && DB.empleados.some(e=>e.id===empleadoDetalleSeleccionado)){
-    verDetalleEmpleado(empleadoDetalleSeleccionado, true);
-  } else {
-    document.getElementById('empleadoDetalleBox').innerHTML = '';
-  }
-
-  // lotes table
-  const lotesBody = document.getElementById('lotesBody');
-  if(DB.lotes.length===0){
-    lotesBody.innerHTML = '<div class="empty">Todavía no asignaste lotes.</div>';
-  } else {
-    const rows = [...DB.lotes].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).map(l=>{
-      const emp = DB.empleados.find(e=>e.id===l.empId);
-      const c = calcLote(l);
-      const estado = l.precioVenta
-        ? `<span class="badge" style="background:${c.margenPct>=0?'#123a2c':'#3a1c2a'};color:${c.margenPct>=0?'var(--green)':'var(--red)'}">${c.margenPct.toFixed(2)}%</span>`
-        : `<span class="badge" style="background:#3a3320;color:var(--gold)">activo</span>`;
-      return `<tr>
-        <td>${emp ? emp.nombre : l.empId}</td>
-        <td>${new Date(l.fecha).toLocaleString('es-DO',{dateStyle:'short',timeStyle:'short'})}</td>
-        <td>${l.montoUSDT}</td>
-        <td>${l.precioCompra}</td>
-        <td>${l.precioVentaObjetivo ?? '—'}</td>
-        <td>${l.precioVenta ?? '—'}</td>
-        <td>${estado}</td>
-        <td>${c.gananciaNegocio!==null ? fmtMoney(c.gananciaNegocio)+' DOP' : '—'}</td>
-        <td>${c.comisionEmp!==null ? fmtMoney(c.comisionEmp)+' DOP' : '—'}</td>
-        <td><button class="delbtn" onclick="borrarLote(${l.id})">✕</button></td>
-      </tr>`;
-    }).join('');
-    lotesBody.innerHTML = `<table><tr><th>Empleado</th><th>Entrega</th><th>USDT</th><th>P.compra</th><th>P.objetivo</th><th>P.venta real</th><th>Estado</th><th>Gan. negocio</th><th>Comisión</th><th></th></tr>${rows}</table>`;
-  }
-
-  renderReportesAdmin();
-}
-
-// ---------- ADMIN: CAPITAL Y RIESGO ----------
-function renderCapitalRiesgo(){
-  const activos = DB.lotes.filter(l=>!l.precioVenta);
-  const capitalRiesgoDOP = activos.reduce((s,l)=>s+l.montoUSDT*l.precioCompra,0);
-  const capitalRiesgoUSDT = activos.reduce((s,l)=>s+l.montoUSDT,0);
-  const capitalHistoricoDOP = DB.lotes.reduce((s,l)=>s+l.montoUSDT*l.precioCompra,0);
-  const pctExpuesto = capitalHistoricoDOP ? (capitalRiesgoDOP/capitalHistoricoDOP*100) : 0;
-
-  document.getElementById('riesgoStats').innerHTML = `
-    <div class="stat"><div class="label">Capital en riesgo (USDT)</div><div class="value">${fmtMoney(capitalRiesgoUSDT)} USDT</div></div>
-    <div class="stat"><div class="label">Capital en riesgo (DOP)</div><div class="value">${fmtMoney(capitalRiesgoDOP)} DOP</div></div>
-    <div class="stat"><div class="label">Lotes abiertos</div><div class="value">${activos.length}</div></div>
-    <div class="stat"><div class="label">% del capital histórico expuesto ahora</div><div class="value ${pctExpuesto>50?'neg':''}">${pctExpuesto.toFixed(1)}%</div></div>
-  `;
-
-  const porEmpleado = {};
-  activos.forEach(l=>{
-    porEmpleado[l.empId] = (porEmpleado[l.empId]||0) + l.montoUSDT*l.precioCompra;
-  });
-  const filas = Object.entries(porEmpleado).map(([empId, capital])=>{
-    const emp = DB.empleados.find(e=>e.id===empId);
-    const pct = capitalRiesgoDOP ? (capital/capitalRiesgoDOP*100) : 0;
-    return {empId, nombre: emp?emp.nombre:empId, capital, pct};
-  }).sort((a,b)=>b.capital-a.capital);
-
-  const box = document.getElementById('riesgoConcentracion');
-  if(filas.length===0){
-    box.innerHTML = '<div class="empty">No hay capital en riesgo ahora mismo — todos los lotes están cerrados.</div>';
-  } else {
-    let alerta = '';
-    if(filas[0].pct > 50 && filas.length > 1){
-      alerta = `<div style="padding:9px 12px;border-radius:4px;background:rgba(194,100,92,.1);color:var(--red);font-size:.82rem;border:1px solid rgba(194,100,92,.2);margin-bottom:10px">
-        Riesgo concentrado: ${filas[0].nombre} tiene el ${filas[0].pct.toFixed(1)}% del capital expuesto. Si algo le pasa a esa cuenta, afecta gran parte del negocio.
-      </div>`;
-    } else if(filas.length === 1){
-      alerta = `<div style="padding:9px 12px;border-radius:4px;background:rgba(201,161,90,.1);color:var(--gold);font-size:.82rem;border:1px solid rgba(201,161,90,.2);margin-bottom:10px">
-        Todo el capital en riesgo está en un solo empleado — normal si es el único operando ahora.
-      </div>`;
+@app.get("/api/debug-files")
+def debug_files():
+    """ENDPOINT TEMPORAL para diagnosticar por qué no aparece index.html. Borrar después."""
+    directorio = INDEX_HTML_PATH.parent
+    try:
+        archivos = sorted(os.listdir(directorio))
+    except Exception as e:
+        archivos = [f"ERROR al listar: {e}"]
+    return {
+        "directorio_buscado": str(directorio),
+        "archivos_encontrados": archivos,
+        "__file___real": str(pathlib.Path(__file__).resolve()),
     }
-    box.innerHTML = alerta + filas.map(f=>`
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.8rem;">
-        <div style="width:110px;color:var(--sub);flex-shrink:0;">${f.nombre}</div>
-        <div style="flex:1;height:18px;background:#0f1226;border-radius:6px;overflow:hidden;">
-          <div style="height:100%;border-radius:6px;width:${f.pct}%;background:linear-gradient(90deg,var(--accent2),var(--accent))"></div>
-        </div>
-        <div style="width:140px;text-align:right;font-size:.75rem;">${fmtMoney(f.capital)} DOP (${f.pct.toFixed(1)}%)</div>
-      </div>`).join('');
-  }
 
-  const lotesBody = document.getElementById('riesgoLotesBody');
-  if(activos.length===0){
-    lotesBody.innerHTML = '<div class="empty">No hay lotes abiertos ahora mismo.</div>';
-  } else {
-    lotesBody.innerHTML = `<table><tr><th>Empleado</th><th>USDT</th><th>P.compra</th><th>Capital (DOP)</th><th>Entrega</th></tr>
-      ${activos.map(l=>{
-        const emp = DB.empleados.find(e=>e.id===l.empId);
-        return `<tr>
-          <td>${emp?emp.nombre:l.empId}</td>
-          <td>${l.montoUSDT}</td>
-          <td>${l.precioCompra}</td>
-          <td>${fmtMoney(l.montoUSDT*l.precioCompra)}</td>
-          <td>${new Date(l.fecha).toLocaleString('es-DO',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
-        </tr>`;
-      }).join('')}
-    </table>`;
-  }
-}
 
-function renderReportesAdmin(){
-  const cerrados = DB.lotes.filter(l=>l.precioVenta);
-  const repDia = document.getElementById('repDia');
-  const repMes = document.getElementById('repMes');
-  const repHora = document.getElementById('repHora');
-  const repEmp = document.getElementById('repEmp');
-  renderGraficoOperaciones(cerrados, granularidadOperaciones);
-  if(cerrados.length===0){
-    repDia.innerHTML = '<div class="empty">Necesitás lotes cerrados para ver reportes.</div>';
-    repMes.innerHTML=''; repHora.innerHTML=''; repEmp.innerHTML='';
-    cargarReporteMercado();
-    return;
-  }
-  const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+@app.get("/", response_class=HTMLResponse)
+def root():
+    if not INDEX_HTML_PATH.exists():
+        raise HTTPException(500, f"index.html no está en {INDEX_HTML_PATH}. Subilo a la raíz del repo, junto a main.py.")
+    if not INDEX_HTML_PATH.is_file():
+        raise HTTPException(500, f"{INDEX_HTML_PATH} existe pero no es un archivo válido (¿es una carpeta con el mismo nombre?). Borralo y subí el archivo suelto.")
+    try:
+        contenido = INDEX_HTML_PATH.read_text(encoding="utf-8")
+    except Exception as e:
+        raise HTTPException(500, f"No se pudo leer index.html: {e}")
+    return HTMLResponse(content=contenido)
 
-  function agrupar(keyFn, labels){
-    const acc = {};
-    cerrados.forEach(l=>{
-      const c = calcLote(l);
-      const k = keyFn(l);
-      if(!acc[k]) acc[k]=[];
-      acc[k].push(c.margenPct);
-    });
-    return Object.entries(acc).map(([k,vals])=>({
-      label: labels ? labels[k] : k,
-      prom: vals.reduce((a,b)=>a+b,0)/vals.length,
-      n: vals.length
-    })).sort((a,b)=>b.prom-a.prom);
-  }
-  drawBars(repDia, agrupar(l=>new Date(l.fecha).getDay(), dias));
-  drawBars(repMes, agrupar(l=>new Date(l.fecha).getMonth(), meses));
-  drawBars(repHora, agrupar(l=>{const h=new Date(l.fecha).getHours(); return Math.floor(h/4)*4;},
-    {0:'00-04h',4:'04-08h',8:'08-12h',12:'12-16h',16:'16-20h',20:'20-24h'}));
-  drawBars(repEmp, agrupar(l=>l.empId, Object.fromEntries(DB.empleados.map(e=>[e.id,e.nombre]))));
-  cargarReporteMercado();
-}
 
-function drawBars(container, data, sufijo){
-  sufijo = sufijo === undefined ? '%' : sufijo;
-  const max = Math.max(...data.map(d=>Math.abs(d.prom)),1);
-  container.innerHTML = data.map(d=>`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.8rem;">
-      <div style="width:90px;color:var(--sub);flex-shrink:0;">${d.label} <span style="color:var(--sub)">(${d.n})</span></div>
-      <div style="flex:1;height:18px;background:#0f1226;border-radius:6px;overflow:hidden;">
-        <div style="height:100%;border-radius:6px;width:${Math.min(100,(Math.abs(d.prom)/max)*100)}%;background:${d.prom<0?'linear-gradient(90deg,#ff6b81,#c93a52)':'linear-gradient(90deg,var(--accent2),var(--accent))'}"></div>
-      </div>
-      <div style="width:76px;text-align:right;font-size:.75rem;" class="${d.prom>=0?'pos':'neg'}">${d.prom.toFixed(2)}${sufijo}</div>
-    </div>`).join('');
-}
+# ---------- BINANCE P2P PROXY ----------
+BINANCE_P2P_URL = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
+_precio_cache = {"data": None, "ts": 0}
+PRECIO_CACHE_TTL = 45  # segundos, para no golpear a Binance en cada refresh
 
-// ---------- REPORTE DE MERCADO (spread real de Binance, no tus operaciones) ----------
-// ---------- ADMIN: gráfico de evolución del mercado (Chart.js) ----------
-let granularidadMercado = 'dia';
-let chartMercado = null;
 
-async function cargarGraficoMercado(granularidad){
-  granularidadMercado = granularidad || granularidadMercado;
-  cargarGraficoMercadoInterno();
-}
-
-async function cargarGraficoMercadoInterno(){
-  const canvas = document.getElementById('graficoMercadoCanvas');
-  const nota = document.getElementById('graficoMercadoNota');
-  if(!canvas || typeof Chart === 'undefined') return;
-  try{
-    const snaps = await apiCall('/api/precio-p2p/historial');
-    if(!snaps || snaps.length < 2){
-      if(chartMercado){ chartMercado.destroy(); chartMercado = null; }
-      nota.textContent = 'Todavía no hay suficiente historial de precios de mercado. Se va llenando con cada consulta.';
-      return;
+def _fetch_binance_side(trade_type: str, rows: int = 10):
+    """
+    trade_type: 'BUY' (nosotros comprando USDT, vemos anuncios de venta de otros)
+                'SELL' (nosotros vendiendo USDT, vemos anuncios de compra de otros)
+    """
+    payload = {
+        "asset": "USDT",
+        "fiat": "DOP",
+        "tradeType": trade_type,
+        "page": 1,
+        "rows": rows,
+        "payTypes": [],
+        "publisherType": None,
     }
-    const puntos = agregarPorPeriodo(
-      snaps, s=>s.timestamp,
-      [{nombre:'compra', get:s=>s.compraMejor}, {nombre:'venta', get:s=>s.ventaMejor}],
-      granularidadMercado
-    );
-    if(chartMercado) chartMercado.destroy();
-    chartMercado = new Chart(canvas.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: puntos.map(p=>p.label),
-        datasets: [
-          {label:'Mercado — compra', data: puntos.map(p=>p.compra), borderColor:'#c9a15a', backgroundColor:'#c9a15a', tension:.25, pointRadius:3},
-          {label:'Mercado — venta', data: puntos.map(p=>p.venta), borderColor:'#5cb787', backgroundColor:'#5cb787', tension:.25, pointRadius:3},
-        ]
-      },
-      options: {
-        responsive:true, maintainAspectRatio:false,
-        interaction:{mode:'index', intersect:false},
-        plugins:{
-          legend:{labels:{color:'#8b8578', font:{family:'Inter'}}},
-          tooltip:{backgroundColor:'#14161c', borderColor:'#c9a15a', borderWidth:1, titleColor:'#ece7dc', bodyColor:'#ece7dc'}
-        },
-        scales:{
-          x:{ticks:{color:'#8b8578', font:{family:'IBM Plex Mono', size:10}}, grid:{color:'rgba(201,161,90,.08)'}},
-          y:{ticks:{color:'#8b8578', font:{family:'IBM Plex Mono', size:10}}, grid:{color:'rgba(201,161,90,.08)'}},
-        }
-      }
-    });
-    nota.textContent = `${snaps.length} consultas de precio guardadas, agrupadas en ${puntos.length} período(s) (${granularidadMercado}).`;
-  }catch(e){
-    nota.textContent = 'No se pudo cargar el gráfico de mercado (' + e.message + ').';
-  }
-}
-
-async function cargarReporteMercado(){
-  cargarGraficoMercado(granularidadMercado);
-  const boxHora = document.getElementById('repMercadoHora');
-  const boxDia = document.getElementById('repMercadoDia');
-  if(!boxHora || !boxDia) return;
-  try{
-    const snaps = await apiCall('/api/precio-p2p/historial');
-    if(!snaps || snaps.length < 5){
-      boxHora.innerHTML = '<div class="empty">Todavía no hay suficiente historial de precios acumulado (se guarda cada vez que se consulta el precio en vivo). Volvé a revisar en unos días.</div>';
-      boxDia.innerHTML = '';
-      return;
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SilkRoadTrading/1.0",
     }
-    const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-    function spreadPct(s){
-      if(!s.ventaMejor || !s.compraMejor) return null;
-      return ((s.ventaMejor - s.compraMejor) / s.compraMejor) * 100;
+    resp = requests.post(BINANCE_P2P_URL, json=payload, headers=headers, timeout=8)
+    resp.raise_for_status()
+    data = resp.json()
+    anuncios = data.get("data", [])
+    if not anuncios:
+        return None
+    precios = [float(a["adv"]["price"]) for a in anuncios]
+    return {
+        "mejor": precios[0],
+        "promedio": round(sum(precios) / len(precios), 4),
+        "cantidad_anuncios": len(precios),
     }
-    function agruparMercado(keyFn, labels){
-      const acc = {};
-      snaps.forEach(s=>{
-        const sp = spreadPct(s);
-        if(sp===null) return;
-        const k = keyFn(s);
-        if(!acc[k]) acc[k]=[];
-        acc[k].push(sp);
-      });
-      return Object.entries(acc).map(([k,vals])=>({
-        label: labels ? labels[k] : k,
-        prom: vals.reduce((a,b)=>a+b,0)/vals.length,
-        n: vals.length
-      })).sort((a,b)=>b.prom-a.prom);
+
+
+@app.get("/api/precio-p2p")
+def precio_p2p(db: Session = Depends(get_db), _=Depends(require_session)):
+    now = time.time()
+    if _precio_cache["data"] and (now - _precio_cache["ts"]) < PRECIO_CACHE_TTL:
+        return _precio_cache["data"]
+
+    try:
+        # BUY = anuncios donde OTROS venden USDT = precio al que NOSOTROS compramos
+        compra = _fetch_binance_side("BUY")
+        # SELL = anuncios donde OTROS compran USDT = precio al que NOSOTROS vendemos
+        venta = _fetch_binance_side("SELL")
+    except Exception as e:
+        raise HTTPException(502, f"No se pudo consultar Binance P2P ahora mismo: {e}")
+
+    if not compra or not venta:
+        raise HTTPException(502, "Binance no devolvió anuncios para USDT/DOP en este momento.")
+
+    result = {
+        "compra": compra,
+        "venta": venta,
+        "timestamp": datetime.utcnow().isoformat(),
     }
-    drawBars(boxHora, agruparMercado(s=>{
-      const h = new Date(s.timestamp + 'Z').getHours();
-      return Math.floor(h/4)*4;
-    }, {0:'00-04h',4:'04-08h',8:'08-12h',12:'12-16h',16:'16-20h',20:'20-24h'}));
-    drawBars(boxDia, agruparMercado(s=>new Date(s.timestamp + 'Z').getDay(), dias));
-  }catch(e){
-    boxHora.innerHTML = `<div class="empty">No se pudo cargar el historial de mercado (${e.message}).</div>`;
-    boxDia.innerHTML = '';
-  }
-}
 
-// ---------- EMPLEADO ----------
-function misLotes(){ return DB.lotes.filter(l=>l.empId===session.id); }
+    # guardamos snapshot para el historial de mejores horarios/días
+    snap = PrecioSnapshot(
+        compra_mejor=compra["mejor"], compra_promedio=compra["promedio"],
+        venta_mejor=venta["mejor"], venta_promedio=venta["promedio"],
+    )
+    db.add(snap)
+    db.commit()
 
-function renderEmpleado(){
-  const emp = DB.empleados.find(e=>e.id===session.id);
-  const mis = misLotes();
-  const cerrados = mis.filter(l=>l.precioVenta);
-  const activo = mis.find(l=>!l.precioVenta);
+    _precio_cache["data"] = result
+    _precio_cache["ts"] = now
+    return result
 
-  const verCard = document.getElementById('verificacionCard');
-  const resto = document.getElementById('empleadoResto');
-  if(!session.verificado){
-    resto.classList.add('hidden');
-    verCard.innerHTML = `
-      <h2>Verificá tu cuenta antes de operar</h2>
-      <div class="note">Necesitamos confirmar que los datos de tu cuenta de Binance coinciden con tu identidad, para asegurarnos de que el USDT llegue bien y evitar errores. Esto se hace una sola vez.</div>
-      <div class="form-grid" style="margin-top:10px">
-        <div><label>Cédula</label><input id="verCedula" placeholder="001-1234567-8"></div>
-        <div><label>Binance Pay ID</label><input id="verBinancePay" placeholder="ej: 123456789"></div>
-      </div>
-      <button onclick="enviarVerificacion()">Confirmar y continuar</button>
-      <div class="note" id="verMsg"></div>
-    `;
-    return;
-  }
-  verCard.innerHTML = '';
-  resto.classList.remove('hidden');
 
-  cargarPrecioP2PEmpleado();
-  renderMiDesempeno(cerrados);
+@app.get("/api/precio-p2p/historial")
+def precio_p2p_historial(db: Session = Depends(get_db), _=Depends(require_admin)):
+    snaps = db.query(PrecioSnapshot).order_by(PrecioSnapshot.timestamp.desc()).limit(500).all()
+    return [{
+        "timestamp": s.timestamp.isoformat(),
+        "compraMejor": s.compra_mejor,
+        "compraPromedio": s.compra_promedio,
+        "ventaMejor": s.venta_mejor,
+        "ventaPromedio": s.venta_promedio,
+    } for s in snaps]
 
-  const gananciaComision = cerrados.reduce((s,l)=>s+calcLote(l).comisionEmp,0);
-  document.getElementById('empStats').innerHTML = `
-    <div class="stat"><div class="label">Lotes totales</div><div class="value">${mis.length}</div></div>
-    <div class="stat"><div class="label">Cerrados</div><div class="value">${cerrados.length}</div></div>
-    <div class="stat"><div class="label">Mi comisión (${emp?emp.comision:30}%)</div><div class="value pos">${fmtMoney(gananciaComision)} DOP</div></div>
-    <div class="stat"><div class="label">Estado</div><div class="value">${activo ? '<span class="pill pendiente">Pendiente</span>' : '<span class="pill al-dia">Al día</span>'}</div></div>
-  `;
 
-  const loteCard = document.getElementById('loteActivoCard');
-  if(activo){
-    loteCard.innerHTML = `<h2>Tu lote asignado</h2>
-      <p style="font-size:.85rem;color:var(--sub)">Te asignaron <b style="color:var(--text)">${activo.montoUSDT} USDT</b> comprados a
-      <b style="color:var(--text)">${activo.precioCompra} DOP</b> el ${new Date(activo.fecha).toLocaleString('es-DO',{dateStyle:'short',timeStyle:'short'})}.</p>
-      <p style="font-size:.9rem;color:var(--gold)">Precio de venta objetivo: <b>${activo.precioVentaObjetivo} DOP</b> — vendé a ese precio.</p>`;
-  } else {
-    loteCard.innerHTML = `<h2>Tu lote asignado</h2><div class="empty">No tenés ningún lote pendiente ahora mismo.</div>`;
-  }
+@app.get("/api/precio-p2p/tendencia")
+def precio_p2p_tendencia(db: Session = Depends(get_db), _=Depends(require_session)):
+    """
+    Versión liviana del historial, accesible también a empleados (no solo admin).
+    Devuelve los últimos 20 snapshots (para un mini-gráfico de tendencia) más
+    una sugerencia en texto plano comparando el spread actual contra el
+    promedio reciente.
+    """
+    snaps = db.query(PrecioSnapshot).order_by(PrecioSnapshot.timestamp.desc()).limit(20).all()
+    snaps = list(reversed(snaps))  # orden cronológico para el gráfico
+    puntos = [{
+        "timestamp": s.timestamp.isoformat(),
+        "compraMejor": s.compra_mejor,
+        "ventaMejor": s.venta_mejor,
+    } for s in snaps]
 
-  const repCard = document.getElementById('reportarCard');
-  if(activo){
-    repCard.innerHTML = `<h2>Confirmar venta del lote</h2>
-      <div class="note">El precio ya está fijado por el negocio (${activo.precioVentaObjetivo} DOP). Solo confirmá la hora en que se ejecutó. Si por algún motivo se vendió a otro precio, marcalo abajo.</div>
-      <div class="form-grid" style="margin-top:8px">
-        <div><label>Fecha/hora venta</label><input id="repFecha" type="datetime-local"></div>
-        <div><label>¿Se vendió distinto al objetivo?</label>
-          <select id="repDistinto" onchange="document.getElementById('repPrecioWrap').classList.toggle('hidden', this.value!=='si')">
-            <option value="no">No, al precio fijado</option>
-            <option value="si">Sí, fue distinto</option>
-          </select>
-        </div>
-        <div id="repPrecioWrap" class="hidden"><label>Precio real de venta</label><input id="repPrecio" type="number" step="0.01" placeholder="ej: 60.0"></div>
-      </div>
-      <button onclick="reportarVenta(${activo.id})">Confirmar venta</button>`;
-  } else {
-    repCard.innerHTML = `<h2>Reportar venta del lote</h2><div class="empty">No hay nada pendiente por reportar.</div>`;
-  }
+    sugerencia = None
+    if len(snaps) >= 3:
+        spreads = []
+        for s in snaps:
+            if s.compra_mejor and s.venta_mejor:
+                spreads.append((s.venta_mejor - s.compra_mejor) / s.compra_mejor * 100)
+        if spreads:
+            actual = spreads[-1]
+            promedio = sum(spreads) / len(spreads)
+            if actual > promedio * 1.15:
+                sugerencia = {"tipo": "favorable", "texto": "El spread está más ancho que lo habitual — buen momento para operar."}
+            elif actual < promedio * 0.85:
+                sugerencia = {"tipo": "desfavorable", "texto": "El spread está más angosto que lo habitual — podría convenir esperar."}
+            else:
+                sugerencia = {"tipo": "normal", "texto": "El spread está dentro de lo normal."}
 
-  const btn = document.getElementById('btnBinance');
-  const lockMsg = document.getElementById('lockMsg');
-  if(activo){
-    btn.disabled = true;
-    lockMsg.innerHTML = '<div class="lock-msg">Tenés un lote sin reportar. Completá la venta arriba para poder continuar.</div>';
-  } else {
-    btn.disabled = false;
-    lockMsg.innerHTML = '';
-  }
+    return {"puntos": puntos, "sugerencia": sugerencia}
 
-  const hist = document.getElementById('miHistorial');
-  if(mis.length===0){
-    hist.innerHTML = '<div class="empty">Todavía no tenés lotes.</div>';
-  } else {
-    const rows = [...mis].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).map(l=>{
-      const c = calcLote(l);
-      const estado = l.precioVenta
-        ? `<span class="badge" style="background:${c.margenPct>=0?'#123a2c':'#3a1c2a'};color:${c.margenPct>=0?'var(--green)':'var(--red)'}">${c.margenPct.toFixed(2)}%</span>`
-        : `<span class="badge" style="background:#3a3320;color:var(--gold)">activo</span>`;
-      return `<tr>
-        <td>${new Date(l.fecha).toLocaleString('es-DO',{dateStyle:'short',timeStyle:'short'})}</td>
-        <td>${l.montoUSDT}</td><td>${l.precioCompra}</td><td>${l.precioVenta ?? '—'}</td>
-        <td>${estado}</td>
-        <td>${c.comisionEmp!==null ? fmtMoney(c.comisionEmp)+' DOP' : '—'}</td>
-      </tr>`;
-    }).join('');
-    hist.innerHTML = `<table><tr><th>Entrega</th><th>USDT</th><th>P.compra</th><th>P.venta</th><th>Estado</th><th>Mi comisión</th></tr>${rows}</table>`;
-  }
-}
 
-// ---------- ADMIN: PRECIO P2P EN VIVO ----------
-// ---------- Agregación por período (día / semana / mes) ----------
-function claveYLabelPeriodo(fecha, granularidad){
-  const d = new Date(fecha);
-  if(granularidad === 'dia'){
-    const key = d.toISOString().slice(0,10);
-    return {key, label: d.toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit'})};
-  }
-  if(granularidad === 'semana'){
-    // semana ISO: lunes como inicio
-    const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const dayNum = (dt.getUTCDay() + 6) % 7;
-    dt.setUTCDate(dt.getUTCDate() - dayNum); // lunes de esa semana
-    const key = dt.toISOString().slice(0,10);
-    return {key, label: 'sem. ' + dt.toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit'})};
-  }
-  // mes
-  const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  return {key, label: meses[d.getMonth()] + ' ' + d.getFullYear()};
-}
+# ---------- AUTH ----------
+# TEMPORAL: la verificación de clave/PIN está desactivada para poder probar
+# el resto del panel sin trabarse. Cuando todo lo demás funcione bien,
+# volvemos a activar esto (avisale a Claude "reactivá el login").
+@app.post("/api/auth/admin")
+def login_admin(body: AdminLoginIn):
+    return {"token": make_token("admin")}
 
-function agregarPorPeriodo(items, getFecha, camposValor, granularidad){
-  const acc = {};
-  items.forEach(item=>{
-    const {key, label} = claveYLabelPeriodo(getFecha(item), granularidad);
-    if(!acc[key]) acc[key] = {key, label, n:0, sumas:{}};
-    acc[key].n++;
-    camposValor.forEach(campo=>{
-      const v = campo.get(item);
-      if(v==null) return;
-      acc[key].sumas[campo.nombre] = (acc[key].sumas[campo.nombre]||0) + v;
-    });
-  });
-  return Object.values(acc).sort((a,b)=>a.key.localeCompare(b.key)).map(p=>{
-    const promedios = {};
-    camposValor.forEach(campo=>{ promedios[campo.nombre] = p.sumas[campo.nombre]!=null ? p.sumas[campo.nombre]/p.n : null; });
-    return {label:p.label, n:p.n, ...promedios};
-  });
-}
 
-// ---------- ADMIN: gráfico REAL de nuestras operaciones (compra vs venta) ----------
-let granularidadOperaciones = 'dia';
-let chartOperaciones = null;
-
-function renderGraficoOperaciones(cerrados, granularidad){
-  granularidadOperaciones = granularidad || granularidadOperaciones;
-  const canvas = document.getElementById('graficoOperacionesCanvas');
-  const nota = document.getElementById('graficoOperacionesNota');
-  if(!canvas || typeof Chart === 'undefined') return;
-  if(!cerrados || cerrados.length < 2){
-    if(chartOperaciones){ chartOperaciones.destroy(); chartOperaciones = null; }
-    nota.textContent = 'Necesitás al menos 2 lotes cerrados para ver el gráfico.';
-    return;
-  }
-  const puntos = agregarPorPeriodo(
-    cerrados, l=>l.fechaVenta,
-    [{nombre:'compra', get:l=>l.precioCompra}, {nombre:'venta', get:l=>l.precioVenta}],
-    granularidadOperaciones
-  );
-  if(chartOperaciones) chartOperaciones.destroy();
-  chartOperaciones = new Chart(canvas.getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: puntos.map(p=>p.label),
-      datasets: [
-        {label:'Precio de compra', data: puntos.map(p=>p.compra), borderColor:'#c9a15a', backgroundColor:'#c9a15a', tension:.25, pointRadius:3},
-        {label:'Precio de venta', data: puntos.map(p=>p.venta), borderColor:'#5cb787', backgroundColor:'#5cb787', tension:.25, pointRadius:3},
-      ]
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      interaction:{mode:'index', intersect:false},
-      plugins:{
-        legend:{labels:{color:'#8b8578', font:{family:'Inter'}}},
-        tooltip:{backgroundColor:'#14161c', borderColor:'#c9a15a', borderWidth:1, titleColor:'#ece7dc', bodyColor:'#ece7dc'}
-      },
-      scales:{
-        x:{ticks:{color:'#8b8578', font:{family:'IBM Plex Mono', size:10}}, grid:{color:'rgba(201,161,90,.08)'}},
-        y:{ticks:{color:'#8b8578', font:{family:'IBM Plex Mono', size:10}}, grid:{color:'rgba(201,161,90,.08)'}},
-      }
+@app.post("/api/auth/empleado")
+def login_empleado(body: EmpleadoLoginIn, db: Session = Depends(get_db)):
+    emp = db.query(Empleado).filter(Empleado.id == body.id).first()
+    if not emp:
+        raise HTTPException(401, "Ese ID de empleado no existe.")
+    if not emp.activo:
+        raise HTTPException(403, "Tu acceso fue bloqueado por el admin. Contactalo para reactivarlo.")
+    return {
+        "token": make_token("empleado", emp.id),
+        "id": emp.id,
+        "nombre": emp.nombre,
+        "comision": emp.comision,
+        "verificado": emp.verificado,
     }
-  });
-  nota.textContent = `${cerrados.length} operaciones cerradas, agrupadas en ${puntos.length} período(s) (${granularidadOperaciones}).`;
-}
 
-function dibujarSparkline(puntos){
-  if(!puntos || puntos.length < 2) return '';
-  const w = 280, h = 44, pad = 3;
-  const valores = puntos.map(p=>p.ventaMejor).filter(v=>v!=null);
-  if(valores.length < 2) return '';
-  const min = Math.min(...valores), max = Math.max(...valores);
-  const rango = (max - min) || 1;
-  const stepX = (w - pad*2) / (valores.length - 1);
-  const pts = valores.map((v,i)=>{
-    const x = pad + i*stepX;
-    const y = h - pad - ((v-min)/rango)*(h-pad*2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  const subiendo = valores[valores.length-1] >= valores[0];
-  const color = subiendo ? 'var(--green)' : 'var(--red)';
-  return `
-    <svg viewBox="0 0 ${w} ${h}" style="width:100%;max-width:${w}px;height:${h}px;display:block;margin-top:4px">
-      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
-    </svg>
-    <div class="note">Precio de venta, últimas ${valores.length} consultas — mín ${min.toFixed(2)} / máx ${max.toFixed(2)} DOP</div>
-  `;
-}
 
-function badgeSugerencia(sugerencia){
-  if(!sugerencia) return '<div class="note">Todavía no hay suficiente historial para sugerir nada — se va llenando solo con el uso.</div>';
-  const colores = {
-    favorable: {bg:'rgba(92,183,135,.12)', fg:'var(--green)'},
-    desfavorable: {bg:'rgba(194,100,92,.12)', fg:'var(--red)'},
-    normal: {bg:'rgba(201,161,90,.1)', fg:'var(--gold)'},
-  };
-  const c = colores[sugerencia.tipo] || colores.normal;
-  return `<div style="margin-top:8px;padding:9px 12px;border-radius:4px;background:${c.bg};color:${c.fg};font-size:.82rem;border:1px solid ${c.bg}">
-    ${sugerencia.texto}
-  </div>`;
-}
+# ---------- EMPLEADOS (admin) ----------
+@app.get("/api/empleados")
+def listar_empleados(db: Session = Depends(get_db), _=Depends(require_admin)):
+    emps = db.query(Empleado).all()
+    return [{
+        "id": e.id, "nombre": e.nombre, "comision": e.comision,
+        "verificado": e.verificado, "activo": e.activo,
+        "cedula": e.cedula, "binancePayId": e.binance_pay_id,
+    } for e in emps]
 
-async function cargarTendencia(containerId){
-  const box = document.getElementById(containerId);
-  if(!box) return;
-  try{
-    const t = await apiCall('/api/precio-p2p/tendencia');
-    box.innerHTML = dibujarSparkline(t.puntos) + badgeSugerencia(t.sugerencia);
-  }catch(e){
-    box.innerHTML = '';
-  }
-}
 
-function actualizarComisionEstimada(precioVentaMercado){
-  const box = document.getElementById('comisionEstimadaBox');
-  if(!box) return;
-  const activo = misLotes().find(l=>!l.precioVenta);
-  if(!activo || !precioVentaMercado){ box.innerHTML = ''; return; }
-  const comisionPct = (DB.empleados.find(e=>e.id===session.id) || {}).comision ?? 0;
-  const gananciaNegocioSiVendeAMercado = (precioVentaMercado - activo.precioCompra) * activo.montoUSDT;
-  const tuComision = Math.max(0, gananciaNegocioSiVendeAMercado) * (comisionPct/100);
-  box.innerHTML = `
-    <div class="stat" style="max-width:280px">
-      <div class="label">Si vendés ahora a precio de mercado</div>
-      <div class="value pos">${fmtMoney(tuComision)} DOP</div>
-      <div class="note" style="margin-top:2px">Estimado con el mejor precio de venta actual (${precioVentaMercado} DOP) y tu comisión del ${comisionPct}%. Cambia según cómo se mueva el mercado hasta que vendas.</div>
-    </div>
-  `;
-}
+@app.post("/api/empleados")
+def crear_empleado(body: EmpleadoCreateIn, db: Session = Depends(get_db), _=Depends(require_admin)):
+    if db.query(Empleado).filter(Empleado.id == body.id).first():
+        raise HTTPException(400, "Ese ID ya existe.")
+    emp = Empleado(id=body.id, nombre=body.nombre, pin_hash=hash_pin(body.pin), comision=body.comision)
+    db.add(emp)
+    db.commit()
+    return {"ok": True}
 
-// ---------- EMPLEADO: panel de desempeño personal ----------
-function renderMiDesempeno(cerrados){
-  const box = document.getElementById('miDesempeno');
-  if(!box) return;
-  if(cerrados.length===0){
-    box.innerHTML = '<div class="empty">Todavía no tenés lotes cerrados. Acá vas a ver cuánto ganaste con el tiempo y qué días te va mejor.</div>';
-    return;
-  }
-  const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const porComision = cerrados.map(l=>calcLote(l).comisionEmp);
-  const totalGanado = porComision.reduce((a,b)=>a+b,0);
-  const promedioMargen = cerrados.map(l=>calcLote(l).margenPct).reduce((a,b)=>a+b,0) / cerrados.length;
 
-  const acc = {};
-  cerrados.forEach(l=>{
-    const d = new Date(l.fecha).getDay();
-    if(!acc[d]) acc[d] = [];
-    acc[d].push(calcLote(l).comisionEmp);
-  });
-  const porDia = Object.entries(acc).map(([k,vals])=>({
-    label: dias[k],
-    prom: vals.reduce((a,b)=>a+b,0)/vals.length,
-    n: vals.length
-  })).sort((a,b)=>b.prom-a.prom);
+@app.post("/api/empleados/{emp_id}/verificar")
+def verificar_empleado(emp_id: str, body: VerificarEmpleadoIn, db: Session = Depends(get_db), session=Depends(require_session)):
+    if session["role"] == "empleado" and session["id"] != emp_id:
+        raise HTTPException(403, "Solo podés verificar tu propia cuenta.")
+    emp = db.query(Empleado).filter(Empleado.id == emp_id).first()
+    if not emp:
+        raise HTTPException(404, "Empleado no encontrado.")
+    emp.cedula = body.cedula
+    emp.binance_pay_id = body.binance_pay_id
+    emp.verificado = True
+    db.commit()
+    return {"ok": True}
 
-  box.innerHTML = `
-    <div class="grid" style="margin-bottom:14px">
-      <div class="stat"><div class="label">Total ganado (comisiones)</div><div class="value pos">${fmtMoney(totalGanado)} DOP</div></div>
-      <div class="stat"><div class="label">Margen promedio logrado</div><div class="value ${promedioMargen>=0?'pos':'neg'}">${promedioMargen.toFixed(2)}%</div></div>
-      <div class="stat"><div class="label">Lotes cerrados</div><div class="value">${cerrados.length}</div></div>
-    </div>
-    <div class="note" style="margin-bottom:6px">Tu comisión promedio por día de la semana (según tus propios lotes):</div>
-    <div id="miDesempenoBarras"></div>
-  `;
-  drawBars(document.getElementById('miDesempenoBarras'), porDia.map(d=>({label:d.label, prom:d.prom, n:d.n})), ' DOP');
-}
 
-async function cargarPrecioP2PEmpleado(){
-  const box = document.getElementById('precioP2PBoxEmp');
-  if(!box) return;
-  box.textContent = 'Consultando Binance P2P...';
-  try{
-    const p = await apiCall('/api/precio-p2p');
-    const hora = new Date(p.timestamp + 'Z').toLocaleTimeString('es-DO');
-    let aviso = '';
-    const activo = misLotes().find(l=>!l.precioVenta);
-    if(activo && p.venta.mejor >= activo.precioVentaObjetivo){
-      aviso = `<div style="margin-top:8px;padding:8px;border-radius:8px;background:#123a2c;color:var(--green);font-size:.85rem">
-        El mercado está pagando ${p.venta.mejor} DOP, igual o mejor que tu objetivo (${activo.precioVentaObjetivo}). Buen momento para vender ya.
-      </div>`;
+@app.patch("/api/empleados/{emp_id}/estado")
+def cambiar_estado_empleado(emp_id: str, body: EstadoEmpleadoIn, db: Session = Depends(get_db), _=Depends(require_admin)):
+    emp = db.query(Empleado).filter(Empleado.id == emp_id).first()
+    if not emp:
+        raise HTTPException(404, "Empleado no encontrado.")
+    emp.activo = body.activo
+    db.commit()
+    return {"ok": True, "activo": emp.activo}
+
+
+@app.delete("/api/empleados/{emp_id}")
+def borrar_empleado(emp_id: str, db: Session = Depends(get_db), _=Depends(require_admin)):
+    emp = db.query(Empleado).filter(Empleado.id == emp_id).first()
+    if emp:
+        db.delete(emp)
+        db.commit()
+    return {"ok": True}
+
+
+# ---------- LOTES ----------
+def lote_to_dict(l: Lote) -> dict:
+    return {
+        "id": l.id,
+        "empId": l.emp_id,
+        "montoUSDT": l.monto_usdt,
+        "precioCompra": l.precio_compra,
+        "precioVentaObjetivo": l.precio_venta_objetivo,
+        "fecha": l.fecha.isoformat(),
+        "precioVenta": l.precio_venta,
+        "fechaVenta": l.fecha_venta.isoformat() if l.fecha_venta else None,
+        "estado": l.estado,
     }
-    box.innerHTML = `
-      <div style="display:flex;gap:24px;flex-wrap:wrap">
-        <div><b>Comprando</b> (referencia): ${p.compra.mejor} DOP</div>
-        <div><b>Vendiendo</b> (referencia): ${p.venta.mejor} DOP</div>
-      </div>
-      <div class="note" style="margin-top:6px">Actualizado ${hora}.</div>
-      ${aviso}
-    `;
-    actualizarComisionEstimada(p.venta.mejor);
-    cargarTendencia('tendenciaBoxEmp');
-  }catch(e){
-    box.innerHTML = `<span style="color:var(--sub)">No se pudo traer el precio ahora. No afecta tu lote — vendé al precio objetivo que te asignaron.</span>`;
-  }
-}
 
-// ---------- MARGEN OBJETIVO: decidir vender YA vs sostener el lote ----------
-let ultimoPrecioMercado = null;
-let ultimoSugeridoVenta = null;
 
-function onCambioMargenObjetivo(){
-  const margen = parseFloat(document.getElementById('margenObjetivo').value) || 0;
-  const compraInput = document.getElementById('lotePrecio');
-  const ventaInput = document.getElementById('lotePrecioVenta');
-  const box = document.getElementById('decisionMargenBox');
-  const compra = parseFloat(compraInput.value);
+@app.get("/api/lotes")
+def listar_lotes(db: Session = Depends(get_db), session=Depends(require_session)):
+    q = db.query(Lote)
+    if session["role"] == "empleado":
+        q = q.filter(Lote.emp_id == session["id"])
+    return [lote_to_dict(l) for l in q.all()]
 
-  if(!compra){ box.innerHTML = ''; return; }
 
-  const nuestroPuntoVenta = +(compra * (1 + margen/100)).toFixed(2);
+@app.post("/api/lotes")
+def crear_lote(body: LoteCreateIn, db: Session = Depends(get_db), _=Depends(require_admin)):
+    if not db.query(Empleado).filter(Empleado.id == body.emp_id).first():
+        raise HTTPException(400, "Ese empleado no existe.")
+    lote = Lote(
+        emp_id=body.emp_id,
+        monto_usdt=body.monto_usdt,
+        precio_compra=body.precio_compra,
+        precio_venta_objetivo=body.precio_venta_objetivo,
+        fecha=body.fecha,
+        estado="activo",
+    )
+    db.add(lote)
+    db.commit()
+    return {"ok": True, "id": lote.id}
 
-  // sugerir el precio de venta automáticamente, sin pisar si el usuario ya lo editó a mano
-  if(!ventaInput.value || parseFloat(ventaInput.value) === ultimoSugeridoVenta){
-    ventaInput.value = nuestroPuntoVenta;
-  }
-  ultimoSugeridoVenta = nuestroPuntoVenta;
 
-  const ventaMercado = ultimoPrecioMercado ? ultimoPrecioMercado.venta.mejor : null;
-  const cumple = ventaMercado != null && ventaMercado >= nuestroPuntoVenta;
+@app.post("/api/lotes/{lote_id}/vender")
+def vender_lote(lote_id: int, body: VentaIn, db: Session = Depends(get_db), session=Depends(require_session)):
+    lote = db.query(Lote).filter(Lote.id == lote_id).first()
+    if not lote:
+        raise HTTPException(404, "Lote no encontrado.")
+    if session["role"] == "empleado" and lote.emp_id != session["id"]:
+        raise HTTPException(403, "Ese lote no es tuyo.")
+    if lote.precio_venta is not None:
+        raise HTTPException(400, "Ese lote ya fue reportado como vendido.")
+    lote.precio_venta = body.precio_venta if body.precio_venta is not None else lote.precio_venta_objetivo
+    lote.fecha_venta = body.fecha_venta
+    lote.estado = "cerrado"
+    db.commit()
+    return {"ok": True}
 
-  const monto = parseFloat(document.getElementById('loteMonto').value);
-  const gananciaPorUnidad = +(nuestroPuntoVenta - compra).toFixed(4);
-  const gananciaTotalTarjeta = monto
-    ? `<div class="stat">
-        <div class="label">4. Tu ganancia (sobre ${monto} USDT)</div>
-        <div class="value pos">${fmtMoney(gananciaPorUnidad * monto)} DOP</div>
-      </div>`
-    : `<div class="stat">
-        <div class="label">4. Tu ganancia (por cada USDT)</div>
-        <div class="value pos">${fmtMoney(gananciaPorUnidad)} DOP</div>
-        <div class="note" style="margin:2px 0 0">Cargá el monto para ver el total</div>
-      </div>`;
 
-  box.innerHTML = `
-    <div class="grid" style="margin:0 0 8px">
-      <div class="stat">
-        <div class="label">1. Precio de mercado (venta)</div>
-        <div class="value">${ventaMercado != null ? ventaMercado + ' DOP' : '—'}</div>
-      </div>
-      <div class="stat">
-        <div class="label">2. Margen objetivo</div>
-        <div class="value">${margen}%</div>
-      </div>
-      <div class="stat">
-        <div class="label">3. Nuestro punto de venta</div>
-        <div class="value" style="color:var(--gold)">${nuestroPuntoVenta} DOP</div>
-      </div>
-      ${gananciaTotalTarjeta}
-    </div>
-    ${ventaMercado == null
-      ? `<div class="note">Actualizá el precio de mercado arriba para comparar contra tu punto de venta.</div>`
-      : cumple
-        ? `<div style="padding:9px 12px;border-radius:4px;background:rgba(92,183,135,.12);color:var(--green);font-size:.82rem;border:1px solid rgba(92,183,135,.2)">
-            El mercado (1) ya cubre nuestro punto de venta (3). Convendría vender ya en vez de sostener el lote esperando más.
-          </div>`
-        : `<div style="padding:9px 12px;border-radius:4px;background:rgba(201,161,90,.1);color:var(--gold);font-size:.82rem;border:1px solid rgba(201,161,90,.2)">
-            El mercado (1) todavía no llega a nuestro punto de venta (3). Esperar un poco podría convenir, pero sostener el lote de más también tiene costo.
-          </div>`
-    }
-  `;
-}
-
-async function cargarPrecioP2P(){
-  const box = document.getElementById('precioP2PBox');
-  if(!box) return;
-  box.textContent = 'Consultando Binance P2P...';
-  try{
-    const p = await apiCall('/api/precio-p2p');
-    ultimoPrecioMercado = p;
-    const hora = new Date(p.timestamp + 'Z').toLocaleTimeString('es-DO');
-    box.innerHTML = `
-      <div style="display:flex;gap:24px;flex-wrap:wrap">
-        <div>
-          <b>Comprar USDT (nosotros)</b><br>
-          Mejor: <span class="badge" style="background:#123a2c;color:var(--green)">${p.compra.mejor} DOP</span>
-          Promedio top ${p.compra.cantidad_anuncios}: ${p.compra.promedio} DOP
-          <br><button onclick="usarPrecioCompra(${p.compra.mejor})" style="margin-top:6px">Usar ${p.compra.mejor} como precio de compra</button>
-        </div>
-        <div>
-          <b>Vender USDT (nosotros)</b><br>
-          Mejor: <span class="badge" style="background:#123a2c;color:var(--green)">${p.venta.mejor} DOP</span>
-          Promedio top ${p.venta.cantidad_anuncios}: ${p.venta.promedio} DOP
-          <br><button onclick="usarPrecioVenta(${p.venta.mejor})" style="margin-top:6px">Usar ${p.venta.mejor} como precio de venta</button>
-        </div>
-      </div>
-      <div class="note" style="margin-top:8px">Actualizado ${hora}. Se refresca desde Binance cada ~45s como máximo (caché) para no saturar la consulta.</div>
-    `;
-    cargarTendencia('tendenciaBoxAdmin');
-    onCambioMargenObjetivo();
-  }catch(e){
-    box.innerHTML = `<span style="color:var(--red)">No se pudo traer el precio ahora (${e.message}). Podés poner los precios a mano igual, sin problema.</span>`;
-  }
-}
-
-function usarPrecioCompra(v){ document.getElementById('lotePrecio').value = v; }
-function usarPrecioVenta(v){ document.getElementById('lotePrecioVenta').value = v; }
-
-async function reportarVenta(loteId){
-  const fecha = document.getElementById('repFecha').value;
-  if(!fecha){ alert('Completá la fecha/hora de venta.'); return; }
-  const distinto = document.getElementById('repDistinto').value === 'si';
-  let precioVenta = null;
-  if(distinto){
-    const precioReal = parseFloat(document.getElementById('repPrecio').value);
-    if(!precioReal){ alert('Ingresá el precio real de venta.'); return; }
-    precioVenta = precioReal;
-  }
-  try{
-    await apiCall('/api/lotes/' + loteId + '/vender', {method:'POST', body:{
-      fecha_venta: fecha, precio_venta: precioVenta
-    }});
-    await cargarDatos();
-    renderEmpleado();
-  }catch(e){ alert('Error: ' + e.message); }
-}
-
-async function enviarVerificacion(){
-  const cedula = document.getElementById('verCedula').value.trim();
-  const binancePay = document.getElementById('verBinancePay').value.trim();
-  const msg = document.getElementById('verMsg');
-  if(!cedula || !binancePay){ msg.textContent = 'Completá ambos campos.'; return; }
-  msg.textContent = 'Guardando...';
-  try{
-    await apiCall(`/api/empleados/${session.id}/verificar`, {method:'POST', body:{cedula, binance_pay_id: binancePay}});
-    session.verificado = true;
-    const emp = DB.empleados.find(e=>e.id===session.id);
-    if(emp) emp.verificado = true;
-    renderEmpleado();
-  }catch(e){
-    msg.textContent = 'Error: ' + e.message;
-  }
-}
-
-function irABinance(){
-  window.open('https://p2p.binance.com/es', '_blank');
-}
-
-// tabs (admin)
-document.addEventListener('click', (e)=>{
-  if(e.target.matches('#adminView .tab[data-tab]')){
-    document.querySelectorAll('#adminView .tab[data-tab]').forEach(t=>t.classList.remove('active'));
-    e.target.classList.add('active');
-    document.querySelectorAll('#adminView [id^="tab-"]').forEach(c=>c.classList.add('hidden'));
-    document.getElementById('tab-'+e.target.dataset.tab).classList.remove('hidden');
-    if(e.target.dataset.tab === 'lotes'){
-      cargarPrecioP2P();
-      if(!document.getElementById('loteFecha').value) autocompletarFechaLote();
-    }
-    if(e.target.dataset.tab === 'riesgo'){
-      renderCapitalRiesgo();
-    }
-    if(e.target.dataset.tab === 'reportes'){
-      setTimeout(()=>{
-        renderGraficoOperaciones(DB.lotes.filter(l=>l.precioVenta), granularidadOperaciones);
-        cargarGraficoMercado(granularidadMercado);
-      }, 30);
-    }
-  }
-  if(e.target.matches('.tab[data-gran]')){
-    const grupo = e.target.dataset.target;
-    document.querySelectorAll(`.tab[data-gran][data-target="${grupo}"]`).forEach(t=>t.classList.remove('active'));
-    e.target.classList.add('active');
-    if(grupo === 'operaciones'){
-      granularidadOperaciones = e.target.dataset.gran;
-      renderGraficoOperaciones(DB.lotes.filter(l=>l.precioVenta), granularidadOperaciones);
-    }
-    if(grupo === 'mercado'){
-      granularidadMercado = e.target.dataset.gran;
-      cargarGraficoMercado(granularidadMercado);
-    }
-  }
-});
-</script>
-
-</body>
-</html>
+@app.delete("/api/lotes/{lote_id}")
+def borrar_lote(lote_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
+    lote = db.query(Lote).filter(Lote.id == lote_id).first()
+    if lote:
+        db.delete(lote)
+        db.commit()
+    return {"ok": True}
