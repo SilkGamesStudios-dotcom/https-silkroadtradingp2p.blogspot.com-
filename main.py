@@ -33,7 +33,7 @@ from typing import Optional, List
 import requests
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import (
     create_engine, Column, String, Float, Integer, DateTime, ForeignKey, Boolean
@@ -213,11 +213,17 @@ def status():
     return {"ok": True, "service": "silk-road-trading-api"}
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def root():
     if not INDEX_HTML_PATH.exists():
-        raise HTTPException(500, "index.html no está en el repo junto a main.py. Subilo a la raíz del repositorio.")
-    return FileResponse(str(INDEX_HTML_PATH))
+        raise HTTPException(500, f"index.html no está en {INDEX_HTML_PATH}. Subilo a la raíz del repo, junto a main.py.")
+    if not INDEX_HTML_PATH.is_file():
+        raise HTTPException(500, f"{INDEX_HTML_PATH} existe pero no es un archivo válido (¿es una carpeta con el mismo nombre?). Borralo y subí el archivo suelto.")
+    try:
+        contenido = INDEX_HTML_PATH.read_text(encoding="utf-8")
+    except Exception as e:
+        raise HTTPException(500, f"No se pudo leer index.html: {e}")
+    return HTMLResponse(content=contenido)
 
 
 # ---------- BINANCE P2P PROXY ----------
